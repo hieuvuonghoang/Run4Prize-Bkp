@@ -1,8 +1,95 @@
-﻿@{
+﻿@addTagHelper*, Microsoft.AspNetCore.Mvc.TagHelpers
+@model SelectList
+
+@{
     ViewData["Title"] = "Home Page";
+    var athletes = ViewData["DataOne"] as List<Run4Prize.Models.Domains.AthleteDomain>;
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container mt-3 mb-3">
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card mb-2" style="padding: 20px !important;">
+                <canvas id="myChart" style="width:80%;height: 50%;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card p-3 mb-2">
+                <div class="row">
+                    <div class="col-md-12">
+                        <form name="formOne" method="get" asp-action="Index">
+                            <select id="sLWeek" name="week" asp-items="Model" class="form-control form-control-sm"></select>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @foreach (var athlete in athletes!)
+    {
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card p-3 mb-2">
+                    <div class="d-flex justify-content-between">
+                        <div class="d-flex flex-row align-items-center">
+                            @*<div>
+                        <img src="@athlete.Profile" width="40" height="40" class="rounded-circle shadow-sm bg-white rounded">
+                        </div>*@
+                            <div class="ml-2 c-details">
+                                <h6 class="mb-0">@athlete.FirstName @athlete.LastName</h6> <span class="text1">@athlete.TotalDistance KM<span class="text2"> / 100 KM</span></span>
+                            </div>
+                        </div>
+                        <div class="badge">
+                            <img src="@athlete.Profile" width="40" height="40" class="rounded-circle shadow-sm bg-white rounded">
+                        </div>
+                    </div>
+                    <div class="mt-2">
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: @athlete.Percent%; background-color: @athlete.ColorCode !important;" aria-valuenow="@athlete.Percent" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
 </div>
+
+@section Scripts{
+    <script>
+        $(document).ready(function () {
+
+            $('#sLWeek').on('change', function () {
+                document.forms["formOne"].submit();
+            });
+
+            const xValues = JSON.parse('@Html.Raw(ViewData["dayMonths"])');
+
+            const datasets = JSON.parse('@Html.Raw(ViewData["chartDatasets"])');
+
+            console.log(datasets);
+
+            new Chart("myChart", {
+                type: "line",
+                data: {
+                    labels: xValues,
+                    datasets: datasets
+                },
+                options: {
+                    legend: { display: false },
+                    indexAxis: 'y',
+                    scales: {
+                        y: { // defining min and max so hiding the dataset does not change scale range
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+}
