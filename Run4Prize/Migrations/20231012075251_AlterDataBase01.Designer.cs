@@ -12,8 +12,8 @@ using Run4Prize.Models.DBContexts.AppContext;
 namespace Run4Prize.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    [Migration("20231011155645_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20231012075251_AlterDataBase01")]
+    partial class AlterDataBase01
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -53,6 +53,9 @@ namespace Run4Prize.Migrations
 
                     b.Property<string>("token")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("utcexpireat")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -319,11 +322,11 @@ namespace Run4Prize.Migrations
 
             modelBuilder.Entity("Run4Prize.Models.DBContexts.AppContext.WeekEntity", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("FromDate")
                         .HasColumnType("datetime2");
@@ -340,6 +343,32 @@ namespace Run4Prize.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Weeks", (string)null);
+                });
+
+            modelBuilder.Entity("Run4Prize.Models.DBContexts.AppContext.WeekUserDistanceEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AthleteId")
+                        .HasColumnType("bigint");
+
+                    b.Property<float>("Distance")
+                        .HasColumnType("real");
+
+                    b.Property<long>("WeekId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AthleteId");
+
+                    b.HasIndex("WeekId");
+
+                    b.ToTable("WeekUserDistances", (string)null);
                 });
 
             modelBuilder.Entity("Run4Prize.Models.DBContexts.AppContext.AccessTokenEntity", b =>
@@ -364,11 +393,37 @@ namespace Run4Prize.Migrations
                     b.Navigation("Athlete");
                 });
 
+            modelBuilder.Entity("Run4Prize.Models.DBContexts.AppContext.WeekUserDistanceEntity", b =>
+                {
+                    b.HasOne("Run4Prize.Models.DBContexts.AppContext.AthleteEntity", "Athlete")
+                        .WithMany("WeekUserDistances")
+                        .HasForeignKey("AthleteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Run4Prize.Models.DBContexts.AppContext.WeekEntity", "Week")
+                        .WithMany("WeekUserDistances")
+                        .HasForeignKey("WeekId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Athlete");
+
+                    b.Navigation("Week");
+                });
+
             modelBuilder.Entity("Run4Prize.Models.DBContexts.AppContext.AthleteEntity", b =>
                 {
                     b.Navigation("AccessToken");
 
                     b.Navigation("Activities");
+
+                    b.Navigation("WeekUserDistances");
+                });
+
+            modelBuilder.Entity("Run4Prize.Models.DBContexts.AppContext.WeekEntity", b =>
+                {
+                    b.Navigation("WeekUserDistances");
                 });
 #pragma warning restore 612, 618
         }

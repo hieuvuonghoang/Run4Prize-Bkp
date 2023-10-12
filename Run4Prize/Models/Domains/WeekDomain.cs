@@ -1,9 +1,8 @@
 ﻿using Newtonsoft.Json;
-using System;
 
-namespace Run4Prize.Models.DBContexts.AppContext
+namespace Run4Prize.Models.Domains
 {
-    public class WeekEntity
+    public class WeekDomain
     {
         [JsonProperty("id")]
         public long Id { get; set; }
@@ -17,6 +16,6 @@ namespace Run4Prize.Models.DBContexts.AppContext
         public bool IsActive { get; set; }
 
         [JsonProperty("week-user-distances")]
-        public ICollection<WeekUserDistanceEntity>? WeekUserDistances { get; set; }
+        public ICollection<WeekUserDistanceDomain>? WeekUserDistances { get; set; }
     }
 }

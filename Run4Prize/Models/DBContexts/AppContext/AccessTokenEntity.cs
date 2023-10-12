@@ -17,6 +17,8 @@ namespace Run4Prize.Models.DBContexts.AppContext
         public string? refreshtoken { get; set; }
         [JsonProperty("athlete_id")]
         public long AthleteId { get; set; }
+        [JsonProperty("utc_expire_at")]
+        public DateTime utcexpireat { get; set; }
 
         [JsonProperty("athlete")]
         public AthleteEntity? Athlete {  get; set; }

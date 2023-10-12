@@ -45,5 +45,8 @@ namespace Run4Prize.Models.DBContexts.AppContext
 
         [JsonProperty("activities")]
         public ICollection<ActivityEntity>? Activities { get; set; }
+
+        [JsonProperty("week-user-distances")]
+        public ICollection<WeekUserDistanceEntity>? WeekUserDistances { get; set; }
     }
 }

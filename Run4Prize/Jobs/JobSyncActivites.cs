@@ -1,17 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Quartz;
 using Run4Prize.Models.DBContexts.AppContext;
 using Run4Prize.Models.Domains;
 using Run4Prize.Services;
 using Run4Prize.Services.ActivityServices;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Run4Prize.Jobs
 {
@@ -28,6 +21,7 @@ namespace Run4Prize.Jobs
             _logger = logger;
             _serviceProvider = serviceProvider;
         }
+
         public async Task Execute(IJobExecutionContext context)
         {
             using(var scope = _serviceProvider.CreateAsyncScope())
@@ -72,9 +66,9 @@ namespace Run4Prize.Jobs
                             try
                             {
                                 jobParam.ExecuteStartDate = DateTime.UtcNow;
-                                var objJobParam = JsonConvert.DeserializeObject<JobSyncActivityParameter>(jobParam.Parameter);
-                                objJobParam.FromDate = objJobParam.FromDate ?? firstDayOfMonth;
-                                var activites = await stravaServices.GetActivities(objJobParam.AccessToken, objJobParam.FromDate.Value);
+                                var objJobParam = JsonConvert.DeserializeObject<JobSyncActivityParameter>(jobParam.Parameter!);
+                                objJobParam!.FromDate = objJobParam.FromDate ?? firstDayOfMonth;
+                                var activites = await stravaServices.GetActivities(objJobParam!.AccessToken!, objJobParam.FromDate.Value);
                                 var activitiEntities = await activityServices.AddIfNoExists(activites);
                                 jobParam.IsExecuted = true;
                                 jobParam.ExecuteEndDate = DateTime.UtcNow;
@@ -86,12 +80,12 @@ namespace Run4Prize.Jobs
                                 jobParam.IsError = true;
                                 dbContext.Logs.Add(new LogEntity()
                                 {
-                                    Message = ex.Message,
+                                    Message = $"JobName: {nameof(JobSyncActivites)} - JobParameters ID:  {jobParam.Id} - ERR: {ex.Message}",
                                     EntityCreateDate = DateTime.UtcNow,
                                     EntityUpdateDate = DateTime.UtcNow,
                                     Type = "ERR"
                                 });
-                                dbContext.SaveChanges();
+                                await dbContext.SaveChangesAsync();
                             }
                         }
                     }
@@ -105,7 +99,7 @@ namespace Run4Prize.Jobs
                         EntityUpdateDate = DateTime.UtcNow,
                         Type = "ERR"
                     });
-                    dbContext.SaveChanges();
+                    await dbContext.SaveChangesAsync();
                 }
             }
         }

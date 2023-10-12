@@ -62,6 +62,8 @@ builder.Services.AddQuartzServer(options =>
 
 builder.Services.AddSingleton<JobSyncActivites>();
 
+builder.Services.AddSingleton<JobRefreshToken>();
+
 
 var app = builder.Build();
 
@@ -127,12 +129,12 @@ using (var scope = app.Services.CreateScope())
     //var scheduler = schedulerFactory.GetScheduler().Wait();
 
     // define the job and tie it to our HelloJob class
-    var job = JobBuilder.Create<JobSyncActivites>()
+    var jobSyncActivites = JobBuilder.Create<JobSyncActivites>()
         .WithIdentity(JobSyncActivites.jobKey)
         .Build();
 
     // Trigger the job to run now, and then every 40 seconds
-    var trigger = TriggerBuilder.Create()
+    var triggerJobSyncActivites = TriggerBuilder.Create()
         .WithIdentity("myTrigger", "groupOne")
         .StartNow()
         //.WithSimpleSchedule(x => x.WithInterval(TimeSpan.FromSeconds(30)).RepeatForever())
@@ -143,8 +145,27 @@ using (var scope = app.Services.CreateScope())
         )
         .Build();
 
-    var taskB = scheduler.ScheduleJob(job, trigger);
+    var jobRefreshToken = JobBuilder.Create<JobRefreshToken>()
+        .WithIdentity(JobRefreshToken.jobKey)
+        .Build();
+
+    // Trigger the job to run now, and then every 40 seconds
+    var triggerJobRefreshToken = TriggerBuilder.Create()
+        .WithIdentity("triggerJobRefreshToken", "groupOne")
+        .StartNow()
+        //.WithSimpleSchedule(x => x.WithInterval(TimeSpan.FromSeconds(60)).RepeatForever())
+        .WithSchedule(
+            CronScheduleBuilder.CronSchedule("0 0 0/2 ? * * *")
+            .InTimeZone(TimeZoneInfo.GetSystemTimeZones().Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
+            .First())
+        )
+        .Build();
+
+    var taskB = scheduler.ScheduleJob(jobSyncActivites, triggerJobSyncActivites);
     taskB.Wait();
+
+    var taskC = scheduler.ScheduleJob(jobRefreshToken, triggerJobRefreshToken);
+    taskC.Wait();
 
 }
 

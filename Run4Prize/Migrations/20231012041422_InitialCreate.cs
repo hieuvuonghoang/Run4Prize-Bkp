@@ -78,7 +78,7 @@ namespace Run4Prize.Migrations
                 name: "Weeks",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<long>(type: "bigint", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     FromDate = table.Column<DateTime>(type: "datetime2", nullable: false),
@@ -173,6 +173,33 @@ namespace Run4Prize.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "WeekUserDistances",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    WeekId = table.Column<long>(type: "bigint", nullable: false),
+                    AthleteId = table.Column<long>(type: "bigint", nullable: false),
+                    Distance = table.Column<float>(type: "real", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WeekUserDistances", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_WeekUserDistances_Athletes_AthleteId",
+                        column: x => x.AthleteId,
+                        principalTable: "Athletes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_WeekUserDistances_Weeks_WeekId",
+                        column: x => x.WeekId,
+                        principalTable: "Weeks",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_Activities_AthleteId",
                 table: "Activities",
@@ -183,6 +210,16 @@ namespace Run4Prize.Migrations
                 table: "Tokens",
                 column: "AthleteId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WeekUserDistances_AthleteId",
+                table: "WeekUserDistances",
+                column: "AthleteId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WeekUserDistances_WeekId",
+                table: "WeekUserDistances",
+                column: "WeekId");
         }
 
         /// <inheritdoc />
@@ -201,10 +238,13 @@ namespace Run4Prize.Migrations
                 name: "Tokens");
 
             migrationBuilder.DropTable(
-                name: "Weeks");
+                name: "WeekUserDistances");
 
             migrationBuilder.DropTable(
                 name: "Athletes");
+
+            migrationBuilder.DropTable(
+                name: "Weeks");
         }
     }
 }

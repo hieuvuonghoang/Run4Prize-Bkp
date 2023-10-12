@@ -11,5 +11,6 @@ namespace Run4Prize.Services
     {
         Task<AccessToken> Authentication(string code);
         Task<List<ActivitySummary>> GetActivities(string code, DateTime fromDateTime);
+        Task<AccessToken> RefreshToken(AccessToken accessToken);
     }
 }

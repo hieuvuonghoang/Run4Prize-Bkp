@@ -2,6 +2,7 @@
 using com.strava.v3.api.Authentication;
 using com.strava.v3.api.Clients;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 using Run4Prize.Models.DBContexts.AppContext;
 using Run4Prize.Models.Domains;
 using Run4Prize.Services.AthleteServices;
@@ -39,12 +40,17 @@ namespace Run4Prize.Services.AccessTokenServices
                 accessTokenEntity.expiresat = accessToken.ExpiresAt;
                 accessTokenEntity.expiresin = accessToken.ExpiresIn;
                 accessTokenEntity.refreshtoken = accessToken.RefreshToken;
+                accessTokenEntity.EntityUpdateDate = DateTime.UtcNow;
+                accessTokenEntity.utcexpireat = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(long.Parse(accessToken.ExpiresAt));
                 isExist = true;
                 await _dbContext.SaveChangesAsync();
             } else
             {
                 accessTokenEntity = _mapper.Map<AccessToken, AccessTokenEntity>(accessToken);
                 accessTokenEntity.AthleteId = athlete.Id;
+                accessTokenEntity.EntityCreateDate = DateTime.UtcNow;
+                accessTokenEntity.EntityUpdateDate = DateTime.UtcNow;
+                accessTokenEntity.utcexpireat = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(long.Parse(accessToken.ExpiresAt));
                 await _dbContext.Tokens.AddAsync(accessTokenEntity);
                 await _dbContext.SaveChangesAsync();
             }

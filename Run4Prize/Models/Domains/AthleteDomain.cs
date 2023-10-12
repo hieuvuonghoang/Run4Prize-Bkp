@@ -47,6 +47,9 @@ namespace Run4Prize.Models.Domains
         [JsonProperty("activities")]
         public List<ActivityDomain>? Activities { get; set; }
 
+        [JsonProperty("distance-of-week")]
+        public float DistanceOfWeek { get; set; }
+
         [JsonProperty("total-distance")]
         public float TotalDistance
         {
@@ -65,7 +68,9 @@ namespace Run4Prize.Models.Domains
         {
             get
             {
-                return (TotalDistance / 100) * 100;
+                if (DistanceOfWeek == 0)
+                    return 0;
+                return (TotalDistance / DistanceOfWeek) * 100;
             }
         }
     }

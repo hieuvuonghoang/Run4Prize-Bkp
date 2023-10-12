@@ -3,6 +3,7 @@ using com.strava.v3.api.Activities;
 using com.strava.v3.api.Athletes;
 using com.strava.v3.api.Authentication;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Newtonsoft.Json.Linq;
 using Run4Prize.Models.DBContexts.AppContext;
 using Run4Prize.Models.Domains;
 using System;
@@ -30,6 +31,7 @@ namespace Run4Prize.AutoMapper
 
             CreateMap<AthleteDomain, AthleteEntity>()
                 .ForMember(dest => dest.Activities, act => act.Ignore());
+            CreateMap<AthleteDomain, AthleteDomain>();
             CreateMap<AthleteEntity, AthleteDomain>();
             //    .ForMember(dest => dest.AccessToken, act => act.Ignore())
             //    .ForMember(dest => dest.Activities, act => act.Ignore());
@@ -43,6 +45,16 @@ namespace Run4Prize.AutoMapper
                 .ForMember(dest => dest.Athlete, act => act.Ignore());
 
             CreateMap<string, DateTime>().ConvertUsing<StringToDateTimeConverter>();
+
+            CreateMap<ChartDatasetDomain, ChartDatasetDomain>();
+
+            CreateMap<WeekUserDistanceDomain, WeekUserDistanceEntity>()
+                .ForMember(dest => dest.Athlete, act => act.Ignore())
+                .ForMember(dest => dest.Week, act => act.Ignore());
+
+            CreateMap<WeekUserDistanceDomain, WeekUserDistanceDomain>();
+            CreateMap<WeekUserDistanceEntity, WeekUserDistanceDomain>();
+            CreateMap<WeekUserDistanceEntity, WeekUserDistanceEntity>();
         }
     }
 

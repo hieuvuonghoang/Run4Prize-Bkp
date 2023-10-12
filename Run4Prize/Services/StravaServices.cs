@@ -19,8 +19,9 @@ namespace Run4Prize.Services
 {
     public class StravaServices : IStravaServices
     {
-        public static string URL_GET_ACCESS_TOKEN = "https://www.strava.com/oauth/token";
+        public static string URL_GET_ACCESS_TOKEN = "https://www.strava.com/api/v3/oauth/token";
         public static string URL_GET_ACTIVITIES = "https://www.strava.com/api/v3/athlete/activities";
+
 
         private readonly Run4PrizeAppConfig _run4PrizeAppConfig;
         private readonly IHttpClientFactory _httpClientFactory;
@@ -30,13 +31,32 @@ namespace Run4Prize.Services
             _httpClientFactory = httpClientFactory;
             _run4PrizeAppConfig = run4PrizeAppConfig.Value;
         }
+
+        public async Task<AccessToken> RefreshToken(AccessToken accessToken)
+        {
+            var httpRequestMessage = new HttpRequestMessage(HttpMethod.Post, $"{URL_GET_ACCESS_TOKEN}?client_id={_run4PrizeAppConfig.client_id}&client_secret={_run4PrizeAppConfig.client_secret!}&grant_type=refresh_token&refresh_token={accessToken.RefreshToken}");
+            var httpClient = _httpClientFactory.CreateClient(URL_GET_ACCESS_TOKEN);
+            var httpResponseMessage = await httpClient.SendAsync(httpRequestMessage);
+            httpResponseMessage.EnsureSuccessStatusCode();
+            if (httpResponseMessage.IsSuccessStatusCode)
+            {
+                var str = await httpResponseMessage.Content.ReadAsStringAsync();
+                var result = JsonConvert.DeserializeObject<AccessToken>(str)!;
+                return result;
+            }
+            else
+            {
+                throw new Exception("RefreshToken Fail");
+            }
+        }
+
         public async Task<AccessToken> Authentication(string code)
         {
             var dict = new Dictionary<string, string>();
-            dict.Add("client_id", _run4PrizeAppConfig.client_id);
-            dict.Add("client_secret", _run4PrizeAppConfig.client_secret);
+            dict.Add("client_id", _run4PrizeAppConfig.client_id!);
+            dict.Add("client_secret", _run4PrizeAppConfig.client_secret!);
             dict.Add("code", code);
-            dict.Add("grant_type", _run4PrizeAppConfig.grant_type);
+            dict.Add("grant_type", _run4PrizeAppConfig.grant_type!);
             var httpRequestMessage = new HttpRequestMessage(HttpMethod.Post, "")
             {
                 Content = new FormUrlEncodedContent(dict)
@@ -47,7 +67,8 @@ namespace Run4Prize.Services
             if (httpResponseMessage.IsSuccessStatusCode)
             {
                 var str = await httpResponseMessage.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<AccessToken>(str);
+                var result = JsonConvert.DeserializeObject<AccessToken>(str)!;
+                return result;
             }
             else
             {

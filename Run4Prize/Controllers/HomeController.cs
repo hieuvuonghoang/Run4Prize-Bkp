@@ -19,13 +19,12 @@ using Run4Prize.Jobs;
 using Quartz;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using AutoMapper;
+using Run4Prize.Filters;
 
 namespace Run4Prize.Controllers
 {
-    [Authorize]
     public class HomeController : Controller
     {
-
         private readonly ILogger<HomeController> _logger;
         private readonly IStravaServices _stravaServices;
         private readonly IAthleteServices _athleteServices;
@@ -60,6 +59,14 @@ namespace Run4Prize.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Index(string week)
         {
+            using (var scopeA = _serviceProvider.CreateScope())
+            {
+                var schedulerFactory = scopeA.ServiceProvider.GetRequiredService<ISchedulerFactory>();
+                var scheduler = await schedulerFactory.GetScheduler();
+                var jobDataMap = new JobDataMap();
+                jobDataMap.Put(JobSyncActivites.JobParamKey, false);
+                await scheduler.TriggerJob(JobSyncActivites.jobKey, jobDataMap);
+            }
             if (!User.Identity!.IsAuthenticated)
             {
                 ViewData[ConstantDomains.UrlCallBackStrava] = $"https://www.strava.com/oauth/authorize?client_id={_run4PrizeAppConfig.client_id}&response_type={_run4PrizeAppConfig.response_type}&redirect_uri={_run4PrizeAppConfig.redirect_uri}&approval_prompt=force&scope=read%2Cactivity%3Aread%2Cactivity%3Aread_all";
@@ -84,7 +91,7 @@ namespace Run4Prize.Controllers
                     .FirstOrDefault();
             }
             if (weekChoose == null)
-                return RedirectToAction(nameof(Error));
+                return RedirectToAction(nameof(Error), new {error = "Tables Weeks empty!"});
             var query =
                 from athlete in _dbContext.Athletes
                 from activite in _dbContext.Activities
@@ -111,7 +118,7 @@ namespace Run4Prize.Controllers
                 }
                 datas.Add(athlete);
             }
-            ViewData["DataOne"] = datas;
+
             var dayMonths = new List<string>();
             var i = 0;
             var timeZone = TimeZoneInfo
@@ -128,7 +135,6 @@ namespace Run4Prize.Controllers
                 dates.Add(dateTmp);
                 i++;
             }
-            ViewData["dayMonths"] = JsonConvert.SerializeObject(dayMonths);
             var selected = sLWeek
                 .Where(x => x.Value == weekChoose.Id.ToString())
                 .First();
@@ -137,23 +143,29 @@ namespace Run4Prize.Controllers
             var athletes = _dbContext.Athletes
                 .AsNoTracking()
                 .ToList();
-            foreach(var athlete in athletes)
+            var dataOnes = new List<AthleteDomain>();
+            var weekUserDistances = await _dbContext.WeekUserDistances
+                .Where(it => it.WeekId == weekChoose.Id)
+                .AsNoTracking()
+                .ToListAsync();
+            foreach (var athlete in athletes)
             {
                 var chartDatasetDomain = new ChartDatasetDomain();
                 chartDatasetDomain.Data = new List<float>();
-                chartDatasetDomain.Tension = 0;
+                chartDatasetDomain.Tension = 0.3f;
                 chartDatasetDomain.BorderColor = athlete.ColorCode;
-                chartDatasetDomain.Label = athlete.LastName + " " + athlete.FirstName;
+                chartDatasetDomain.Label = athlete.FirstName + " " + athlete.LastName;
+                chartDatasetDomain.BorderWidth = 1;
+                var findOne = datas.Where(it => it.Id == athlete.Id).FirstOrDefault();
                 foreach (var date in dates)
                 {
-                    var findOne = datas.Where(it => it.Id == athlete.Id).FirstOrDefault();
                     float data = 0;
-                    if(findOne != null)
+                    if (findOne != null)
                     {
                         var findTwos = findOne.Activities?
                             .Where(it => it.Year == date.Year && it.Month == date.Month && it.Day == date.Day)
                             .ToList();
-                        if(findTwos != null)
+                        if (findTwos != null)
                         {
                             data = findTwos.Sum(it => it.Distance) / 1000;
                         }
@@ -161,12 +173,26 @@ namespace Run4Prize.Controllers
                     chartDatasetDomain.Data.Add(data);
                 }
                 chartDatasetDomains.Add(chartDatasetDomain);
+                var tmp = _mapper.Map<AthleteEntity, AthleteDomain>(athlete);
+                if (findOne != null)
+                    tmp.Activities = findOne.Activities;
+                tmp.DistanceOfWeek = 0;
+                var weekUserDistance = weekUserDistances.Where(it => it.AthleteId == athlete.Id).FirstOrDefault();
+                if (weekUserDistance != null)
+                    tmp.DistanceOfWeek = weekUserDistance.Distance;
+                dataOnes.Add(tmp);
             }
+            dataOnes = dataOnes.OrderBy(it => it.TotalDistance)
+                .ToList();
+            ViewData["dayMonths"] = JsonConvert.SerializeObject(dayMonths);
+            ViewData["DataOne"] = dataOnes;
             ViewData["chartDatasets"] = JsonConvert.SerializeObject(chartDatasetDomains);
+            ViewData["WeekId"] = weekChoose.Id.ToString();
             return View(sLWeek);
         }
 
         [AllowAnonymous]
+        [TypeFilter(typeof(CustomAuthorizationFilterAttribute))]
         public async Task<IActionResult> LogOutAsync()
         {
             await HttpContext.SignOutAsync();
@@ -174,6 +200,7 @@ namespace Run4Prize.Controllers
         }
 
         [Authorize]
+        [TypeFilter(typeof(CustomAuthorizationFilterAttribute))]
         public async Task<IActionResult> SyncActivityAsync()
         {
             using (var scopeA = _serviceProvider.CreateScope())
@@ -187,7 +214,44 @@ namespace Run4Prize.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        [Authorize]
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        [TypeFilter(typeof(CustomAuthorizationFilterAttribute))]
+        public async Task<IActionResult> Distance(WeekUserDistanceDomain model)
+        {
+            var claims = HttpContext.User.Claims;
+            var userId = claims
+                .FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value;
+            if (model.AthleteId == 0 || model.WeekId == 0 || userId != model.AthleteId.ToString())
+            {
+                return RedirectToAction(nameof(Error), new { error = "UserId not equals!" });
+            }
+            var weekExist = await _dbContext
+                .Weeks
+                .Where(it => it.Id == model.WeekId)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+            if (weekExist == null)
+            {
+                return RedirectToAction(nameof(Error), new { error = "WeekId not exist!" });
+            }
+            var weekUserDistances = _dbContext
+                .WeekUserDistances
+                .Where(it => it.AthleteId == model.AthleteId && it.WeekId == model.WeekId)
+                .FirstOrDefault();
+            if (weekUserDistances == null)
+            {
+                await _dbContext.WeekUserDistances.AddAsync(_mapper.Map<WeekUserDistanceDomain, WeekUserDistanceEntity>(model));
+            }
+            else
+            {
+                weekUserDistances.Distance = model.Distance;
+            }
+            await _dbContext.SaveChangesAsync();
+            return RedirectToAction(nameof(Index), new { week = model.WeekId });
+        }
+
+        [TypeFilter(typeof(CustomAuthorizationFilterAttribute))]
         public IActionResult Privacy()
         {
             return View();
@@ -228,8 +292,16 @@ namespace Run4Prize.Controllers
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
+        [AllowAnonymous]
+        public IActionResult Error(string? error)
         {
+            if (!string.IsNullOrEmpty(error))
+            {
+                ViewData["Error"] = error;
+            } else
+            {
+                ViewData["Error"] = "";
+            }
             return View(new ErrorViewModel { RequestId = System.Diagnostics.Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
 
@@ -240,7 +312,7 @@ namespace Run4Prize.Controllers
             {
                 new Claim(ClaimTypes.Name, $"{athleteDomain.Id}"),
                 new Claim("FullName", $"{athleteDomain.LastName} {athleteDomain.FirstName}"),
-                new Claim("Avatar", athleteDomain.ProfileMedium),
+                new Claim("Avatar", $"{athleteDomain.ProfileMedium}"),
                 new Claim(ClaimTypes.Role, "User"),
             };
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

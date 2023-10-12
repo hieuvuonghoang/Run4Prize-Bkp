@@ -1,26 +1,28 @@
-﻿@addTagHelper*, Microsoft.AspNetCore.Mvc.TagHelpers
+﻿@using System.Security.Claims;
+@addTagHelper*, Microsoft.AspNetCore.Mvc.TagHelpers
 @model SelectList
 
 @{
     ViewData["Title"] = "Home Page";
     var athletes = ViewData["DataOne"] as List<Run4Prize.Models.Domains.AthleteDomain>;
+    var top = 1;
 }
 
 <div class="container mt-3 mb-3">
 
     <div class="row">
-        <div class="col-md-12">
+        <div class="col-sm-12">
             <div class="card mb-2" style="padding: 20px !important;">
-                <canvas id="myChart" style="width:80%;height: 50%;"></canvas>
+                <canvas id="myChart" style="width:80%;height: 75%;"></canvas>
             </div>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-md-12">
+        <div class="col-sm-12">
             <div class="card p-3 mb-2">
                 <div class="row">
-                    <div class="col-md-12">
+                    <div class="col-sm-12">
                         <form name="formOne" method="get" asp-action="Index">
                             <select id="sLWeek" name="week" asp-items="Model" class="form-control form-control-sm"></select>
                         </form>
@@ -33,22 +35,28 @@
     @foreach (var athlete in athletes!)
     {
         <div class="row">
-            <div class="col-md-12">
+            <div class="col-sm-12">
                 <div class="card p-3 mb-2">
                     <div class="d-flex justify-content-between">
                         <div class="d-flex flex-row align-items-center">
-                            @*<div>
-                        <img src="@athlete.Profile" width="40" height="40" class="rounded-circle shadow-sm bg-white rounded">
-                        </div>*@
                             <div class="ml-2 c-details">
-                                <h6 class="mb-0">@athlete.FirstName @athlete.LastName</h6> <span class="text1">@athlete.TotalDistance KM<span class="text2"> / 100 KM</span></span>
+                                <h6 class="mb-2">@top. @athlete.FirstName @athlete.LastName</h6>
+                                <button type="button" class="btn btn-info btn-sm text1" disabled>@athlete.TotalDistance Km</button>
+                                <strong>/</strong>
+                                @if (User.Identity!.IsAuthenticated && @athlete.Id.ToString() == User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value)
+                                {
+                                    <button name="updateDistance" data-weekid="@ViewData["WeekId"]" data-distance="@athlete.DistanceOfWeek" data-athleteid="@athlete.Id" type="button" class="btn btn-success btn-sm text1">@athlete.DistanceOfWeek Km</button>
+                                } else
+                                {
+                                    <button disabled type="button" class="btn btn-success btn-sm text1">@athlete.DistanceOfWeek Km</button>
+                                }
                             </div>
                         </div>
                         <div class="badge">
-                            <img src="@athlete.Profile" width="40" height="40" class="rounded-circle shadow-sm bg-white rounded">
+                            <img src="@athlete.Profile" width="50" height="50" class="rounded-circle shadow-sm bg-white rounded">
                         </div>
                     </div>
-                    <div class="mt-2">
+                    <div class="mt-2 ml-2 mr-2">
                         <div class="progress">
                             <div class="progress-bar" role="progressbar" style="width: @athlete.Percent%; background-color: @athlete.ColorCode !important;" aria-valuenow="@athlete.Percent" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
@@ -56,40 +64,103 @@
                 </div>
             </div>
         </div>
+        top++;
     }
 
+
+    <!-- Modal -->
+    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Cập nhật mục tiêu</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form name="formDistance" method="post" asp-action="Distance">
+                        <input hidden name="WeekId" value="" />
+                        <input hidden name="AthleteId" value="" />
+                        <input type="number" name="Distance" value="" min="0" step="1" class="form-control form-control-sm" />
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button id="saveChanges" type="button" class="btn btn-primary">Lưu</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts{
     <script>
         $(document).ready(function () {
 
+            $('button[name="updateDistance"]').on('click', function() {
+                const weekId = $(this).attr('data-weekid');
+                const distance = $(this).attr('data-distance');
+                const athleteid = $(this).attr('data-athleteid');
+                $('form[name="formDistance"] input[name="WeekId"]').val(weekId);
+                $('form[name="formDistance"] input[name="AthleteId"]').val(athleteid);
+                $('form[name="formDistance"] input[name="Distance"]').val(distance);
+                $('#exampleModal').modal('toggle');
+            })
+
+            $('#saveChanges').on('click', function () {
+                document.forms["formDistance"].submit();
+            })
+
             $('#sLWeek').on('change', function () {
                 document.forms["formOne"].submit();
             });
 
-            const xValues = JSON.parse('@Html.Raw(ViewData["dayMonths"])');
+            const labels = JSON.parse('@Html.Raw(ViewData["dayMonths"])');
 
             const datasets = JSON.parse('@Html.Raw(ViewData["chartDatasets"])');
 
-            console.log(datasets);
+            const data = {
+                labels: labels,
+                datasets: datasets
+            }
 
-            new Chart("myChart", {
-                type: "line",
-                data: {
-                    labels: xValues,
-                    datasets: datasets
-                },
+            console.log(data);
+
+            const config = {
+                type: 'line',
+                data: data,
                 options: {
-                    legend: { display: false },
-                    indexAxis: 'y',
+                    indexAxis: 'x',
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Tổng quan thành tích tập luyện'
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                    },
                     scales: {
-                        y: { // defining min and max so hiding the dataset does not change scale range
-                            beginAtZero: true
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'KM',
+                                position: 'top'
+                            },
+                            min: 0,
+                            ticks: {
+                                stepSize: 0.5
+                            }
                         }
                     }
-                }
-            });
+                },
+            };
+
+            new Chart("myChart", config);
         });
     </script>
 }

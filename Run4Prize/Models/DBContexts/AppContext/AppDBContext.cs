@@ -14,9 +14,18 @@ namespace Run4Prize.Models.DBContexts.AppContext
         public DbSet<LogEntity> Logs { get; set; }
         public DbSet<JobParameter> JobParameters { get; set; }
         public DbSet<WeekEntity> Weeks { get; set; }
+        public DbSet<WeekUserDistanceEntity> WeekUserDistances { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<WeekUserDistanceEntity>()
+                .ToTable("WeekUserDistances");
+            modelBuilder.Entity<WeekUserDistanceEntity>()
+                .HasKey(it => it.Id);
+            modelBuilder.Entity<WeekUserDistanceEntity>()
+                .Property(it => it.Id)
+                .ValueGeneratedOnAdd();
+
             modelBuilder.Entity<WeekEntity>()
                 .ToTable("Weeks");
             modelBuilder.Entity<WeekEntity>()
@@ -75,6 +84,16 @@ namespace Run4Prize.Models.DBContexts.AppContext
                 .HasOne<AthleteEntity>(s => s.Athlete)
                 .WithMany(g => g.Activities)
                 .HasForeignKey(s => s.AthleteId);
+
+            modelBuilder.Entity<WeekUserDistanceEntity>()
+                .HasOne<AthleteEntity>(it => it.Athlete)
+                .WithMany(it => it.WeekUserDistances)
+                .HasForeignKey(it => it.AthleteId);
+
+            modelBuilder.Entity<WeekUserDistanceEntity>()
+                .HasOne<WeekEntity>(it => it.Week)
+                .WithMany(it => it.WeekUserDistances)
+                .HasForeignKey(it => it.WeekId);
         }
     }
 }
