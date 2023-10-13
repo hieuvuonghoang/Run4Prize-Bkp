@@ -10,5 +10,6 @@ namespace Run4Prize.Models.Domains
         public string? grant_type { get; set;}
         public string? response_type { get; set;}
         public DateTime? from_date { get; set; }
+        public long user_admin { get; set; }
     }
 }

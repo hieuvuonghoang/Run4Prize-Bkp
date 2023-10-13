@@ -8,72 +8,101 @@
     var top = 1;
 }
 
-<div class="container mt-3 mb-3">
+<div class="row mt-3 mb-3 justify-content-md-center">
 
-    <div class="row">
-        <div class="col-sm-12">
-            <div class="card mb-2" style="padding: 20px !important;">
-                <canvas id="myChart" style="width:80%;height: 75%;"></canvas>
-            </div>
-        </div>
-    </div>
+    <div class="col-sm-12 col-md-8 col-lg-6 col-xl-5">
 
-    <div class="row">
-        <div class="col-sm-12">
-            <div class="card p-3 mb-2">
-                <div class="row">
-                    <div class="col-sm-12">
-                        <form name="formOne" method="get" asp-action="Index">
-                            <select id="sLWeek" name="week" asp-items="Model" class="form-control form-control-sm"></select>
-                        </form>
-                    </div>
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="card mb-2" style="padding: 20px !important;">
+                    <canvas id="myChart" style="width:80%;height: 75%;"></canvas>
                 </div>
             </div>
         </div>
-    </div>
 
-    @foreach (var athlete in athletes!)
-    {
         <div class="row">
             <div class="col-sm-12">
                 <div class="card p-3 mb-2">
-                    <div class="d-flex justify-content-between">
-                        <div class="d-flex flex-row align-items-center">
-                            <div class="ml-2 c-details">
-                                <h6 class="mb-2">@top. @athlete.FirstName @athlete.LastName</h6>
-                                <button type="button" class="btn btn-info btn-sm text1" disabled>@athlete.TotalDistance Km</button>
-                                <strong>/</strong>
-                                @if (User.Identity!.IsAuthenticated && @athlete.Id.ToString() == User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value)
-                                {
-                                    <button name="updateDistance" data-weekid="@ViewData["WeekId"]" data-distance="@athlete.DistanceOfWeek" data-athleteid="@athlete.Id" type="button" class="btn btn-success btn-sm text1">@athlete.DistanceOfWeek Km</button>
-                                } else
-                                {
-                                    <button disabled type="button" class="btn btn-success btn-sm text1">@athlete.DistanceOfWeek Km</button>
-                                }
-                            </div>
-                        </div>
-                        <div class="badge">
-                            <img src="@athlete.Profile" width="50" height="50" class="rounded-circle shadow-sm bg-white rounded">
-                        </div>
-                    </div>
-                    <div class="mt-2 ml-2 mr-2">
-                        <div class="progress">
-                            <div class="progress-bar" role="progressbar" style="width: @athlete.Percent%; background-color: @athlete.ColorCode !important;" aria-valuenow="@athlete.Percent" aria-valuemin="0" aria-valuemax="100"></div>
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <form name="formOne" method="get" asp-action="Index">
+                                <select id="sLWeek" name="week" asp-items="Model" class="form-control form-control-sm"></select>
+                            </form>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        top++;
-    }
 
+        @foreach (var athlete in athletes!)
+        {
+            var totalMoving = (athlete.TotalTime / 60).ToString("N2");
+            var backgroundColor = "";
+            if (athlete.Percent >= 100)
+            {
+                backgroundColor = "bg-success";
+            }
+            else if (athlete.Percent >= 50 && athlete.Percent < 100)
+            {
+                backgroundColor = "bg-info";
+            }
+            else if (athlete.Percent > 30 && athlete.Percent < 50)
+            {
+                backgroundColor = "bg-warning";
+            } else
+            {
+                backgroundColor = "bg-danger";
+            }
+            <div class="row">
+                <div class="col-sm-12">
+                    <div class="card p-3 mb-2">
+                        <div class="d-flex justify-content-between">
+                            <div class="d-flex flex-row align-items-center">
+                                <div class="ml-2 c-details">
+                                    <strong>@top. @athlete.FirstName @athlete.LastName</strong>
+                                    <strong> | </strong>
+                                    <span class="text1">Time: @totalMoving (h)</span>
+                                    <strong> | </strong>
+                                    <span class="text1">Pace: @athlete.Pace.ToString("N2")</span>
+                                    <div class="mt-2">
+                                        @if (User.Identity!.IsAuthenticated && @athlete.Id.ToString() == User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value)
+                                        {
+                                            <button data-toggle="tooltip" data-placement="bottom" title="Chọn màu" name="updateColor" type="button" data-weekid="@ViewData["WeekId"]" data-athleteid="@athlete.Id" data-color="@athlete.ColorCode" style="background-color: @athlete.ColorCode !important;" class="btn btn-sm text1">@athlete.TotalDistance Km</button>
+                                            <strong> / </strong>
+                                            <button data-toggle="tooltip" data-placement="bottom" title="Cập nhật mục tiêu" name="updateDistance" data-weekid="@ViewData["WeekId"]" data-distance="@athlete.DistanceOfWeek" data-athleteid="@athlete.Id" type="button" class="btn btn-success btn-sm text1">@athlete.DistanceOfWeek Km</button>
+                                        }
+                                        else
+                                        {
+                                            <button data-toggle="tooltip" data-placement="bottom" title="Chọn màu" disabled type="button" style="background-color: @athlete.ColorCode !important;" class="btn btn-sm text1">@athlete.TotalDistance Km</button>
+                                            <strong> / </strong>
+                                            <button data-toggle="tooltip" data-placement="bottom" title="Cập nhật mục tiêu" disabled type="button" class="btn btn-success btn-sm text1">@athlete.DistanceOfWeek Km</button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="badge">
+                                <img src="@athlete.Profile" width="50" height="50" class="rounded-circle shadow-sm bg-white rounded">
+                            </div>
+                        </div>
+                        <div class="mt-2 ml-2 mr-2">
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar @backgroundColor" role="progressbar" style="width: @athlete.Percent%;" aria-valuenow="@athlete.Percent" aria-valuemin="0" aria-valuemax="100">@athlete.Percent.ToString("N2") %</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            top++;
+        }
+
+    </div>
 
     <!-- Modal -->
     <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-sm modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel">Cập nhật mục tiêu</h5>
+                    <h5 class="modal-title" id="exampleModalLabel"> </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -90,11 +119,36 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="exampleModalTwo" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"> Chọn màu </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form name="formColor" method="post" asp-action="Color">
+                        <input hidden name="Id" value="" />
+                        <input hidden name="WeekId" value="" />
+                        <input type="color" name="ColorCode" value="" class="form-control form-control-sm" />
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button id="saveChangeColors" type="button" class="btn btn-primary">Lưu</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts{
     <script>
         $(document).ready(function () {
+
+            const weekName = '@Html.Raw(ViewData["WeekName"])';
 
             $('button[name="updateDistance"]').on('click', function() {
                 const weekId = $(this).attr('data-weekid');
@@ -103,11 +157,26 @@
                 $('form[name="formDistance"] input[name="WeekId"]').val(weekId);
                 $('form[name="formDistance"] input[name="AthleteId"]').val(athleteid);
                 $('form[name="formDistance"] input[name="Distance"]').val(distance);
+                $('#exampleModalLabel').text('Mục tiêu ' + weekName);
                 $('#exampleModal').modal('toggle');
+            })
+
+            $('button[name="updateColor"]').on('click', function () {
+                const color = $(this).attr('data-color');
+                const athleteid = $(this).attr('data-athleteid');
+                const weekId = $(this).attr('data-weekid');
+                $('form[name="formColor"] input[name="ColorCode"]').val(color);
+                $('form[name="formColor"] input[name="Id"]').val(athleteid);
+                $('form[name="formColor"] input[name="WeekId"]').val(weekId);
+                $('#exampleModalTwo').modal('toggle');
             })
 
             $('#saveChanges').on('click', function () {
                 document.forms["formDistance"].submit();
+            })
+
+            $('#saveChangeColors').on('click', function () {
+                document.forms["formColor"].submit();
             })
 
             $('#sLWeek').on('change', function () {

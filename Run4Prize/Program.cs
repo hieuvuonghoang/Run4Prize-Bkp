@@ -33,7 +33,7 @@ builder.Services.AddScoped<IStravaServices, StravaServices>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options =>
                 {
-                    options.ExpireTimeSpan = TimeSpan.FromMinutes(5);
+                    options.ExpireTimeSpan = TimeSpan.FromDays(5);
                     options.SlidingExpiration = true;
                     options.AccessDeniedPath = "/Forbidden/";
                 });

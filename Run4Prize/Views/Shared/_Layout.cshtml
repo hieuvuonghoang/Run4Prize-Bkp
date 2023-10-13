@@ -1,4 +1,5 @@
 ﻿@using Run4Prize.Constants;
+@using System.Security.Claims;
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,10 +26,63 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" href="@ViewData[ConstantDomains.UrlCallBackStrava]">Kết nối với Strava</a>
                             </li>
-                        } else
+                        }
+                        else
                         {
-                            <li class="nav-item">
-                                <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="LogOut">Đăng xuất</a>
+                            var roles = User.Claims.Where(x => x.Type == ClaimTypes.Role).ToList();
+                            var isRoleAdmin = roles.Where(it => it.Value == "Administrator").FirstOrDefault() == null ? false : true;
+                            if (isRoleAdmin)
+                            {
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownOne" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Tools
+                                    </a>
+                                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownOne">
+                                        <li class="nav-item">
+                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Logs">Logs</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="JobParams">JobParams</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Tokens">Tokens</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Activities">Activities</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Athletes">Athletes</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="ClearLogs">ClearLogs</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="ClearJobParams">ClearJobParams</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="ClearTokens">ClearTokens</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="ClearActivities">ClearActivities</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="TriggerJobRefreshToken">TriggerJobRefreshToken</a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            }
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownTwo" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Hi @User.Claims.FirstOrDefault(x => x.Type == "FullName")?.Value
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdownTwo">
+                                    <li class="nav-item">
+                                        <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="SyncActivity">Xóa dữ liệu</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="LogOut">Đăng xuất</a>
+                                    </li>
+                                </ul>
                             </li>
                         }
                     </ul>

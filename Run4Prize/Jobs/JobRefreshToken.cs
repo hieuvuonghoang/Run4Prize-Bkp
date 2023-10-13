@@ -1,4 +1,5 @@
-﻿using com.strava.v3.api.Authentication;
+﻿using Azure.Core;
+using com.strava.v3.api.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 using Run4Prize.Models.DBContexts.AppContext;
@@ -27,13 +28,34 @@ namespace Run4Prize.Jobs
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDBContext>();
                 try
                 {
+                    dbContext.Logs.Add(new LogEntity()
+                    {
+                        Message = $"JobName: {nameof(JobRefreshToken)} - Job Running...",
+                        EntityCreateDate = DateTime.UtcNow,
+                        EntityUpdateDate = DateTime.UtcNow,
+                        Type = "INF"
+                    });
                     var date = DateTime.UtcNow.AddHours(1);
                     var tokenNeedUpdates = await dbContext.Tokens.Where(it => it.utcexpireat <= date)
                         .ToListAsync();
                     var tokenNeedRemoves = await dbContext.Tokens.Where(it => it.utcexpireat < DateTime.UtcNow)
                         .ToListAsync();
+                    dbContext.Logs.Add(new LogEntity()
+                    {
+                        Message = $"JobName: {nameof(JobRefreshToken)} - TokenNeddUpdate: {tokenNeedUpdates.Count} - TokenNeddRemove: {tokenNeedRemoves.Count}",
+                        EntityCreateDate = DateTime.UtcNow,
+                        EntityUpdateDate = DateTime.UtcNow,
+                        Type = "INF"
+                    });
                     foreach (var item in tokenNeedRemoves)
                     {
+                        dbContext.Logs.Add(new LogEntity()
+                        {
+                            Message = $"JobName: {nameof(JobRefreshToken)} - Delete Tokens ID: {item.Id}",
+                            EntityCreateDate = DateTime.UtcNow,
+                            EntityUpdateDate = DateTime.UtcNow,
+                            Type = "INF"
+                        });
                         dbContext.Tokens.Entry(item).State = EntityState.Deleted;
                     }
                     var stravaServices = scope.ServiceProvider.GetRequiredService<IStravaServices>();
@@ -41,7 +63,7 @@ namespace Run4Prize.Jobs
                     {
                         try
                         {
-                            var aT = new AccessToken()
+                            var aT = new com.strava.v3.api.Authentication.AccessToken()
                             {
                                 Token = item.token,
                                 RefreshToken = item.refreshtoken,
@@ -53,6 +75,13 @@ namespace Run4Prize.Jobs
                             item.expiresin = accessToken.ExpiresIn;
                             item.expiresat = accessToken.ExpiresAt;
                             item.utcexpireat = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddSeconds(long.Parse(accessToken.ExpiresAt));
+                            dbContext.Logs.Add(new LogEntity()
+                            {
+                                Message = $"JobName: {nameof(JobRefreshToken)} - Refresh Tokens ID: {item.Id} - OldAT: {aT.Token} - NewAT: {accessToken.Token}",
+                                EntityCreateDate = DateTime.UtcNow,
+                                EntityUpdateDate = DateTime.UtcNow,
+                                Type = "INF"
+                            });
                             dbContext.Tokens.Entry(item).State = EntityState.Modified;
                         } catch(Exception ex)
                         {
@@ -66,6 +95,13 @@ namespace Run4Prize.Jobs
                             await dbContext.SaveChangesAsync();
                         }
                     }
+                    dbContext.Logs.Add(new LogEntity()
+                    {
+                        Message = $"JobName: {nameof(JobRefreshToken)} - Job Done",
+                        EntityCreateDate = DateTime.UtcNow,
+                        EntityUpdateDate = DateTime.UtcNow,
+                        Type = "INF"
+                    });
                     await dbContext.SaveChangesAsync();
                 } catch(Exception ex)
                 {

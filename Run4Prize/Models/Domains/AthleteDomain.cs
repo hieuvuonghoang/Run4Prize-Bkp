@@ -64,6 +64,20 @@ namespace Run4Prize.Models.Domains
             }
         }
 
+        [JsonProperty("total-time")]
+        public float TotalTime
+        {
+            get
+            {
+                float result = 0;
+                if (Activities != null)
+                {
+                    result = Activities.Sum(it => it.MovingTime) / 60;
+                }
+                return result;
+            }
+        }
+
         public float Percent
         {
             get
@@ -73,5 +87,18 @@ namespace Run4Prize.Models.Domains
                 return (TotalDistance / DistanceOfWeek) * 100;
             }
         }
+
+        public float Pace
+        {
+            get
+            {
+                if (TotalDistance == 0)
+                    return 0;
+                else
+                    return TotalTime / TotalDistance;
+            }
+        }
+
+        public long WeekId { get; set; }
     }
 }

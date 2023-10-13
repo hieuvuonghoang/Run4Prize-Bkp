@@ -20,6 +20,7 @@ using Quartz;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using AutoMapper;
 using Run4Prize.Filters;
+using Newtonsoft.Json.Linq;
 
 namespace Run4Prize.Controllers
 {
@@ -59,14 +60,9 @@ namespace Run4Prize.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Index(string week)
         {
-            using (var scopeA = _serviceProvider.CreateScope())
-            {
-                var schedulerFactory = scopeA.ServiceProvider.GetRequiredService<ISchedulerFactory>();
-                var scheduler = await schedulerFactory.GetScheduler();
-                var jobDataMap = new JobDataMap();
-                jobDataMap.Put(JobSyncActivites.JobParamKey, false);
-                await scheduler.TriggerJob(JobSyncActivites.jobKey, jobDataMap);
-            }
+            var timeZone = TimeZoneInfo
+                .GetSystemTimeZones().Where(it => it.BaseUtcOffset == TimeSpan.FromHours(0))
+                .First();
             if (!User.Identity!.IsAuthenticated)
             {
                 ViewData[ConstantDomains.UrlCallBackStrava] = $"https://www.strava.com/oauth/authorize?client_id={_run4PrizeAppConfig.client_id}&response_type={_run4PrizeAppConfig.response_type}&redirect_uri={_run4PrizeAppConfig.redirect_uri}&approval_prompt=force&scope=read%2Cactivity%3Aread%2Cactivity%3Aread_all";
@@ -76,6 +72,39 @@ namespace Run4Prize.Controllers
                 var claims = HttpContext.User.Claims;
                 var claimAvatar = claims
                     .FirstOrDefault(x => x.Type == "Avatar")?.Value;
+                var userId = claims
+                    .FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value;
+                var accessToken = await _dbContext.Tokens
+                    .Where(it => it.AthleteId == long.Parse(userId!))
+                    .Select(it => new AccessTokenEntity()
+                    {
+                        token = it.token
+                    })
+                    .FirstOrDefaultAsync();
+                if(accessToken != null)
+                {
+                    var jobParam = new JobParameter()
+                    {
+                        IsError = false,
+                        IsExecuted = false,
+                        JobName = nameof(JobSyncActivites),
+                        Parameter = JsonConvert.SerializeObject(new JobSyncActivityParameter()
+                        {
+                            AccessToken = accessToken.token,
+                            FromDate = null
+                        })
+                    };
+                    await _dbContext.JobParameters.AddAsync(jobParam);
+                    await _dbContext.SaveChangesAsync();
+                    using (var scopeA = _serviceProvider.CreateScope())
+                    {
+                        var schedulerFactory = scopeA.ServiceProvider.GetRequiredService<ISchedulerFactory>();
+                        var scheduler = await schedulerFactory.GetScheduler();
+                        var jobDataMap = new JobDataMap();
+                        jobDataMap.Put(JobSyncActivites.JobParamKey, true);
+                        await scheduler.TriggerJob(JobSyncActivites.jobKey, jobDataMap);
+                    }
+                }
                 ViewData[ConstantDomains.UrlUserAvatar] = claimAvatar;
             }
             var weekEntitys = await _dbContext
@@ -91,22 +120,24 @@ namespace Run4Prize.Controllers
                     .FirstOrDefault();
             }
             if (weekChoose == null)
-                return RedirectToAction(nameof(Error), new {error = "Tables Weeks empty!"});
+                return RedirectToAction(nameof(Error), new { error = "Tables Weeks empty!" });
             var query =
                 from athlete in _dbContext.Athletes
                 from activite in _dbContext.Activities
-                where athlete.Id == activite.AthleteId && activite.StartDate > weekChoose.FromDate && activite.StartDate < weekChoose.ToDate
+                where athlete.Id == activite.AthleteId && activite.StartDate >= weekChoose.FromDate.AddHours(7) && activite.StartDate <= weekChoose.ToDate.AddHours(7)
                 select new
                 {
                     athlete = athlete,
                     activite = activite
                 };
-            var resultQuery = query.ToList();
-            var groupByAthletes = resultQuery.GroupBy(it => it.athlete).ToList();
+            var resultQuery = query.AsNoTracking().ToList();
+            var groupByAthletes = resultQuery
+                .GroupBy(it => it.athlete.Id)
+                .ToList();
             var datas = new List<AthleteDomain>();
-            foreach (var groupByAthlete in groupByAthletes)
+            foreach (var groupByAthlete in groupByAthletes.ToList())
             {
-                var athlete = _mapper.Map<AthleteEntity, AthleteDomain>(groupByAthlete.Key);
+                var athlete = _mapper.Map<AthleteEntity, AthleteDomain>(groupByAthlete.FirstOrDefault()!.athlete);
                 athlete.Activities = new List<ActivityDomain>();
                 foreach (var activite in groupByAthlete.ToList())
                 {
@@ -118,21 +149,17 @@ namespace Run4Prize.Controllers
                 }
                 datas.Add(athlete);
             }
-
             var dayMonths = new List<string>();
             var i = 0;
-            var timeZone = TimeZoneInfo
-                .GetSystemTimeZones().Where(it => it.BaseUtcOffset == TimeSpan.FromHours(0))
-                .First();
-            var toDateTmp = new DateTimeWithZone(weekChoose.ToDate, timeZone).UniversalTime.AddHours(7);
+            var toDateTmp = weekChoose.ToDate.AddHours(7);
             var dates = new List<DateTime>();
             while (true)
             {
-                var dateTmp = new DateTimeWithZone(weekChoose.FromDate, timeZone).UniversalTime.AddHours(7).AddDays(i);
+                var dateTmp = weekChoose.FromDate.AddHours(7).AddDays(i);
                 if (dateTmp > toDateTmp)
                     break;
-                dayMonths.Add(dateTmp.ToString("dd/MM"));
-                dates.Add(dateTmp);
+                dayMonths.Add(weekChoose.FromDate.AddHours(7).AddDays(i).ToString("dd/MM"));
+                dates.Add(weekChoose.FromDate.AddHours(7).AddDays(i));
                 i++;
             }
             var selected = sLWeek
@@ -182,12 +209,13 @@ namespace Run4Prize.Controllers
                     tmp.DistanceOfWeek = weekUserDistance.Distance;
                 dataOnes.Add(tmp);
             }
-            dataOnes = dataOnes.OrderBy(it => it.TotalDistance)
+            dataOnes = dataOnes.OrderByDescending(it => it.TotalDistance)
                 .ToList();
             ViewData["dayMonths"] = JsonConvert.SerializeObject(dayMonths);
             ViewData["DataOne"] = dataOnes;
             ViewData["chartDatasets"] = JsonConvert.SerializeObject(chartDatasetDomains);
             ViewData["WeekId"] = weekChoose.Id.ToString();
+            ViewData["WeekName"] = weekChoose.Name;
             return View(sLWeek);
         }
 
@@ -201,16 +229,25 @@ namespace Run4Prize.Controllers
 
         [Authorize]
         [TypeFilter(typeof(CustomAuthorizationFilterAttribute))]
-        public async Task<IActionResult> SyncActivityAsync()
+        public async Task<IActionResult> SyncActivity()
         {
-            using (var scopeA = _serviceProvider.CreateScope())
-            {
-                var schedulerFactory = scopeA.ServiceProvider.GetRequiredService<ISchedulerFactory>();
-                var scheduler = await schedulerFactory.GetScheduler();
-                var jobDataMap = new JobDataMap();
-                jobDataMap.Put(JobSyncActivites.JobParamKey, false);
-                await scheduler.TriggerJob(JobSyncActivites.jobKey, jobDataMap);
-            }
+            var claims = HttpContext.User.Claims;
+            var userId = claims
+                .FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value;
+            var activities = await _dbContext.Activities.Where(it => it.AthleteId == long.Parse(userId!)).ToListAsync();
+            var tokens = await _dbContext.Tokens.Where(it => it.AthleteId == long.Parse(userId!)).ToListAsync();
+            var weekUserDistances = await _dbContext.WeekUserDistances.Where(it => it.AthleteId == long.Parse(userId!)).ToListAsync();
+            var athletes = await _dbContext.Athletes.Where(it => it.Id == long.Parse(userId!)).ToListAsync();
+            foreach (var item in activities)
+                _dbContext.Entry(item).State = EntityState.Deleted;
+            foreach (var item in tokens)
+                _dbContext.Entry(item).State = EntityState.Deleted;
+            foreach (var item in weekUserDistances)
+                _dbContext.Entry(item).State = EntityState.Deleted;
+            foreach (var item in athletes)
+                _dbContext.Entry(item).State = EntityState.Deleted;
+            await _dbContext.SaveChangesAsync();
+            await HttpContext.SignOutAsync();
             return RedirectToAction(nameof(Index));
         }
 
@@ -246,6 +283,34 @@ namespace Run4Prize.Controllers
             else
             {
                 weekUserDistances.Distance = model.Distance;
+            }
+            await _dbContext.SaveChangesAsync();
+            return RedirectToAction(nameof(Index), new { week = model.WeekId });
+        }
+
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        [TypeFilter(typeof(CustomAuthorizationFilterAttribute))]
+        public async Task<IActionResult> Color(AthleteDomain model)
+        {
+            var claims = HttpContext.User.Claims;
+            var userId = claims
+                .FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value;
+            if (model.Id == 0 || userId != model.Id.ToString())
+            {
+                return RedirectToAction(nameof(Error), new { error = "UserId not equals!" });
+            }
+            var weekUserDistances = _dbContext
+                .Athletes
+                .Where(it => it.Id == model.Id)
+                .FirstOrDefault();
+            if (weekUserDistances == null)
+            {
+                return RedirectToAction(nameof(Error), new { error = "User not found!" });
+            }
+            else
+            {
+                weekUserDistances.ColorCode = model.ColorCode;
             }
             await _dbContext.SaveChangesAsync();
             return RedirectToAction(nameof(Index), new { week = model.WeekId });
@@ -291,6 +356,147 @@ namespace Run4Prize.Controllers
             return RedirectToAction(nameof(Index));
         }
 
+        [HttpGet]
+        [TypeFilter(typeof(CustomAuthorizationFilterAttribute))]
+        [Authorize(Roles = "Administrator")]
+        public async Task<IActionResult> Logs(int skip, int take)
+        {
+            skip = skip == 0 ? 0 : skip;
+            take = take == 0 ? 20 : take;
+            var logs = await _dbContext.Logs
+                .OrderByDescending(it => it.Id)
+                .Skip(skip)
+                .Take(take)
+                .AsNoTracking()
+                .ToListAsync();
+            return Ok(JsonConvert.SerializeObject(logs, Formatting.Indented));
+        }
+
+        [HttpGet]
+        [CustomAuthorizationFilterAttribute(Roles = "Administrator")]
+        public async Task<IActionResult> JobParams(int skip, int take)
+        {
+            skip = skip == 0 ? 0 : skip;
+            take = take == 0 ? 20 : take;
+            var jobParameters = await _dbContext.JobParameters
+                .OrderByDescending(it => it.Id)
+                .Skip(skip)
+                .Take(take)
+                .AsNoTracking()
+                .ToListAsync();
+            return Ok(JsonConvert.SerializeObject(jobParameters, Formatting.Indented));
+        }
+
+        [HttpGet]
+        [CustomAuthorizationFilterAttribute(Roles = "Administrator")]
+        public async Task<IActionResult> Tokens(int skip, int take)
+        {
+            skip = skip == 0 ? 0 : skip;
+            take = take == 0 ? 20 : take;
+            var tokens = await _dbContext.Tokens
+                .OrderByDescending(it => it.Id)
+                .Skip(skip)
+                .Take(take)
+                .AsNoTracking()
+                .ToListAsync();
+            return Ok(JsonConvert.SerializeObject(tokens, Formatting.Indented));
+        }
+
+        [HttpGet]
+        [CustomAuthorizationFilterAttribute(Roles = "Administrator")]
+        public async Task<IActionResult> Activities(int skip, int take)
+        {
+            skip = skip == 0 ? 0 : skip;
+            take = take == 0 ? 20 : take;
+            var activities = await _dbContext.Activities
+                .OrderByDescending(it => it.Id)
+                .Skip(skip)
+                .Take(take)
+                .AsNoTracking()
+                .ToListAsync();
+            return Ok(JsonConvert.SerializeObject(activities, Formatting.Indented));
+        }
+
+        [HttpGet]
+        [CustomAuthorizationFilterAttribute(Roles = "Administrator")]
+        public async Task<IActionResult> Athletes(int skip, int take)
+        {
+            skip = skip == 0 ? 0 : skip;
+            take = take == 0 ? 20 : take;
+            var athletes = await _dbContext.Athletes
+                .OrderByDescending(it => it.Id)
+                .Skip(skip)
+                .Take(take)
+                .AsNoTracking()
+                .ToListAsync();
+            return Ok(JsonConvert.SerializeObject(athletes, Formatting.Indented));
+        }
+
+        [HttpGet]
+        [CustomAuthorizationFilterAttribute(Roles = "Administrator")]
+        public async Task<IActionResult> ClearLogs()
+        {
+            var logs = await _dbContext.Logs
+                .ToListAsync();
+            foreach(var log in logs)
+            {
+                _dbContext.Entry(log).State = EntityState.Deleted;
+            }
+            var count = await _dbContext.SaveChangesAsync();
+            return Ok(JsonConvert.SerializeObject(new { RowCount = logs.Count, Deleted = count }, Formatting.Indented));
+        }
+
+        [HttpGet]
+        [CustomAuthorizationFilterAttribute(Roles = "Administrator")]
+        public async Task<IActionResult> ClearJobParams()
+        {
+            var entities = await _dbContext.JobParameters
+                .ToListAsync();
+            foreach (var entity in entities)
+            {
+                _dbContext.Entry(entity).State = EntityState.Deleted;
+            }
+            var count = await _dbContext.SaveChangesAsync();
+            return Ok(JsonConvert.SerializeObject(new { RowCount = entities.Count, Deleted = count }, Formatting.Indented));
+        }
+
+        [HttpGet]
+        [CustomAuthorizationFilterAttribute(Roles = "Administrator")]
+        public async Task<IActionResult> ClearTokens()
+        {
+            var entities = await _dbContext.Tokens
+                .ToListAsync();
+            foreach (var entity in entities)
+                _dbContext.Entry(entity).State = EntityState.Deleted;
+            var count = await _dbContext.SaveChangesAsync();
+            return Ok(JsonConvert.SerializeObject(new { RowCount = entities.Count, Deleted = count }, Formatting.Indented));
+        }
+
+        [HttpGet]
+        [CustomAuthorizationFilterAttribute(Roles = "Administrator")]
+        public async Task<IActionResult> ClearActivities()
+        {
+            var entities = await _dbContext.Activities
+                .ToListAsync();
+            foreach (var entity in entities)
+                _dbContext.Entry(entity).State = EntityState.Deleted;
+            var count = await _dbContext.SaveChangesAsync();
+            return Ok(JsonConvert.SerializeObject(new { RowCount = entities.Count, Deleted = count }, Formatting.Indented));
+        }
+
+        [HttpGet]
+        [CustomAuthorizationFilterAttribute(Roles = "Administrator")]
+        public async Task<IActionResult> TriggerJobRefreshToken()
+        {
+            using (var scopeA = _serviceProvider.CreateScope())
+            {
+                var schedulerFactory = scopeA.ServiceProvider.GetRequiredService<ISchedulerFactory>();
+                var scheduler = await schedulerFactory.GetScheduler();
+                await scheduler.TriggerJob(JobRefreshToken.jobKey);
+            }
+            return Ok("TriggerRefreshToken Done!");
+        }
+
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         [AllowAnonymous]
         public IActionResult Error(string? error)
@@ -298,7 +504,8 @@ namespace Run4Prize.Controllers
             if (!string.IsNullOrEmpty(error))
             {
                 ViewData["Error"] = error;
-            } else
+            }
+            else
             {
                 ViewData["Error"] = "";
             }
@@ -311,10 +518,12 @@ namespace Run4Prize.Controllers
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, $"{athleteDomain.Id}"),
-                new Claim("FullName", $"{athleteDomain.LastName} {athleteDomain.FirstName}"),
+                new Claim("FullName", $"{athleteDomain.FirstName} {athleteDomain.LastName}"),
                 new Claim("Avatar", $"{athleteDomain.ProfileMedium}"),
                 new Claim(ClaimTypes.Role, "User"),
             };
+            if (athleteDomain.Id == _run4PrizeAppConfig.user_admin)
+                claims.Add(new Claim(ClaimTypes.Role, "Administrator"));
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var authProperties = new AuthenticationProperties
             {

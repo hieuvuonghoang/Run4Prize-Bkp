@@ -29,6 +29,13 @@ namespace Run4Prize.Jobs
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDBContext>();
                 try
                 {
+                    dbContext.Logs.Add(new LogEntity()
+                    {
+                        Message = $"JobName: {nameof(JobSyncActivites)} - Job Running...",
+                        EntityCreateDate = DateTime.UtcNow,
+                        EntityUpdateDate = DateTime.UtcNow,
+                        Type = "INF"
+                    });
                     var isJobParam = context.MergedJobDataMap.GetBoolean(JobParamKey);
                     var jobParams = new List<JobParameter>();
                     var today = DateTime.UtcNow;
@@ -70,6 +77,14 @@ namespace Run4Prize.Jobs
                                 objJobParam!.FromDate = objJobParam.FromDate ?? firstDayOfMonth;
                                 var activites = await stravaServices.GetActivities(objJobParam!.AccessToken!, objJobParam.FromDate.Value);
                                 var activitiEntities = await activityServices.AddIfNoExists(activites);
+                                dbContext.Logs.Add(new LogEntity()
+                                {
+                                    Message = $"JobName: {nameof(JobSyncActivites)} - Access Token: {objJobParam!.AccessToken!}, " +
+                                    $"FromDate: {objJobParam.FromDate.Value} - TotalRow: {activites.Count} - TotalRowAdd: {activitiEntities.Count}",
+                                    EntityCreateDate = DateTime.UtcNow,
+                                    EntityUpdateDate = DateTime.UtcNow,
+                                    Type = "INF"
+                                });
                                 jobParam.IsExecuted = true;
                                 jobParam.ExecuteEndDate = DateTime.UtcNow;
                                 if(jobParam.Id == 0)
@@ -89,6 +104,14 @@ namespace Run4Prize.Jobs
                             }
                         }
                     }
+                    dbContext.Logs.Add(new LogEntity()
+                    {
+                        Message = $"JobName: {nameof(JobSyncActivites)} - Done",
+                        EntityCreateDate = DateTime.UtcNow,
+                        EntityUpdateDate = DateTime.UtcNow,
+                        Type = "INF"
+                    });
+                    await dbContext.SaveChangesAsync();
                 }
                 catch (Exception ex)
                 {
