@@ -17,9 +17,8 @@ namespace Run4Prize.Filters
                     {
                         action = "Error",
                         controller = "Home",
-                        error = "Forbidden",
-                    })
-                );
+                        error = "Forbidden!",
+                    }));
             }
             var claims = user.Claims
                 .Where(x => x.Type == ClaimTypes.Role)
@@ -44,7 +43,7 @@ namespace Run4Prize.Filters
                     {
                         action = "Error",
                         controller = "Home",
-                        error = "Forbidden",
+                        error = "Forbidden!",
                     }));
                 }
             }

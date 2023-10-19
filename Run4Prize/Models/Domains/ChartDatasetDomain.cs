@@ -16,5 +16,7 @@ namespace Run4Prize.Models.Domains
         public float Tension { get; set; }
         [JsonProperty("borderWidth")]
         public int BorderWidth { get; set; }
+        [JsonProperty("athleteId")]
+        public long AthleteId { get; set; }
     }
 }

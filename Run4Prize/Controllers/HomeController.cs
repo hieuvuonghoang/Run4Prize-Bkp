@@ -20,7 +20,6 @@ using Quartz;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using AutoMapper;
 using Run4Prize.Filters;
-using Newtonsoft.Json.Linq;
 
 namespace Run4Prize.Controllers
 {
@@ -60,9 +59,6 @@ namespace Run4Prize.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Index(string week)
         {
-            var timeZone = TimeZoneInfo
-                .GetSystemTimeZones().Where(it => it.BaseUtcOffset == TimeSpan.FromHours(0))
-                .First();
             if (!User.Identity!.IsAuthenticated)
             {
                 ViewData[ConstantDomains.UrlCallBackStrava] = $"https://www.strava.com/oauth/authorize?client_id={_run4PrizeAppConfig.client_id}&response_type={_run4PrizeAppConfig.response_type}&redirect_uri={_run4PrizeAppConfig.redirect_uri}&approval_prompt=force&scope=read%2Cactivity%3Aread%2Cactivity%3Aread_all";
@@ -81,7 +77,7 @@ namespace Run4Prize.Controllers
                         token = it.token
                     })
                     .FirstOrDefaultAsync();
-                if(accessToken != null)
+                if (accessToken != null)
                 {
                     var jobParam = new JobParameter()
                     {
@@ -111,8 +107,13 @@ namespace Run4Prize.Controllers
                 .Weeks
                 .Where(it => it.IsActive).AsNoTracking().ToListAsync();
             weekEntitys = weekEntitys.OrderBy(it => it.Id).ToList();
+            if (weekEntitys == null || weekEntitys.Count == 0)
+                return RedirectToAction(nameof(Error), new { error = "Tables Weeks empty!" });
             var sLWeek = new SelectList(weekEntitys, "Id", "Name");
-            var weekChoose = weekEntitys.FirstOrDefault();
+            var utcNow = DateTime.UtcNow;
+            var weekChoose = weekEntitys
+                .Where(it => it.FromDate <= utcNow && it.ToDate >= utcNow && !it.Name!.ToUpper().Contains("TẤT CẢ"))
+                .FirstOrDefault();
             var outWeek = 0;
             if (!string.IsNullOrEmpty(week) && int.TryParse(week, out outWeek))
             {
@@ -120,11 +121,17 @@ namespace Run4Prize.Controllers
                     .FirstOrDefault();
             }
             if (weekChoose == null)
-                return RedirectToAction(nameof(Error), new { error = "Tables Weeks empty!" });
+                weekChoose = weekEntitys.Where(it => it.Name!.ToUpper().Contains("TẤT CẢ")).FirstOrDefault();
+            if (weekChoose == null)
+                weekChoose = weekEntitys.FirstOrDefault();
+            var utcTimeFromDate = new DateTimeWithZone(weekChoose!.FromDate, TimeZoneInfo.Utc).UniversalTime;
+            var utcTimeToDate = new DateTimeWithZone(weekChoose.ToDate, TimeZoneInfo.Utc).UniversalTime;
+            var localTimeFromDate = TimeZoneInfo.ConvertTime(utcTimeFromDate, TimeZoneInfo.Local);
+            var localTimeToDate = TimeZoneInfo.ConvertTime(utcTimeToDate, TimeZoneInfo.Local);
             var query =
                 from athlete in _dbContext.Athletes
                 from activite in _dbContext.Activities
-                where athlete.Id == activite.AthleteId && activite.StartDate >= weekChoose.FromDate.AddHours(7) && activite.StartDate <= weekChoose.ToDate.AddHours(7)
+                where athlete.Id == activite.AthleteId && activite.StartDate >= localTimeFromDate && activite.StartDate <= localTimeToDate
                 select new
                 {
                     athlete = athlete,
@@ -135,12 +142,22 @@ namespace Run4Prize.Controllers
                 .GroupBy(it => it.athlete.Id)
                 .ToList();
             var datas = new List<AthleteDomain>();
+            var timeZone = TimeZoneInfo
+                .GetSystemTimeZones().Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
+                .First();
             foreach (var groupByAthlete in groupByAthletes.ToList())
             {
                 var athlete = _mapper.Map<AthleteEntity, AthleteDomain>(groupByAthlete.FirstOrDefault()!.athlete);
                 athlete.Activities = new List<ActivityDomain>();
                 foreach (var activite in groupByAthlete.ToList())
                 {
+                    activite.activite.StartDate = new DateTimeWithZone(activite.activite.StartDate, TimeZoneInfo.Local).UniversalTime;
+                    activite.activite.StartDate = TimeZoneInfo.ConvertTime(activite.activite.StartDate, timeZone);
+                    if (!activite.activite.Name!.ToUpper().Contains("WALK")
+                        && !activite.activite.Name!.ToUpper().Contains("RUN"))
+                    {
+                        activite.activite.Distance = activite.activite.Distance / 3;
+                    }
                     var tmp = _mapper.Map<ActivityEntity, ActivityDomain>(activite.activite);
                     tmp.Year = activite.activite.StartDate.Year;
                     tmp.Month = activite.activite.StartDate.Month;
@@ -151,15 +168,16 @@ namespace Run4Prize.Controllers
             }
             var dayMonths = new List<string>();
             var i = 0;
-            var toDateTmp = weekChoose.ToDate.AddHours(7);
+            var toDateTmp = TimeZoneInfo.ConvertTime(utcTimeToDate, timeZone);
+            var fromDateTmp = TimeZoneInfo.ConvertTime(utcTimeFromDate, timeZone);
             var dates = new List<DateTime>();
             while (true)
             {
-                var dateTmp = weekChoose.FromDate.AddHours(7).AddDays(i);
+                var dateTmp = fromDateTmp.AddDays(i);
                 if (dateTmp > toDateTmp)
                     break;
-                dayMonths.Add(weekChoose.FromDate.AddHours(7).AddDays(i).ToString("dd/MM"));
-                dates.Add(weekChoose.FromDate.AddHours(7).AddDays(i));
+                dayMonths.Add(dateTmp.ToString("dd/MM"));
+                dates.Add(dateTmp);
                 i++;
             }
             var selected = sLWeek
@@ -179,10 +197,11 @@ namespace Run4Prize.Controllers
             {
                 var chartDatasetDomain = new ChartDatasetDomain();
                 chartDatasetDomain.Data = new List<float>();
-                chartDatasetDomain.Tension = 0.3f;
+                chartDatasetDomain.Tension = 0f;
                 chartDatasetDomain.BorderColor = athlete.ColorCode;
                 chartDatasetDomain.Label = athlete.FirstName + " " + athlete.LastName;
                 chartDatasetDomain.BorderWidth = 1;
+                chartDatasetDomain.AthleteId = athlete.Id;
                 var findOne = datas.Where(it => it.Id == athlete.Id).FirstOrDefault();
                 foreach (var date in dates)
                 {
@@ -211,6 +230,12 @@ namespace Run4Prize.Controllers
             }
             dataOnes = dataOnes.OrderByDescending(it => it.TotalDistance)
                 .ToList();
+            var distanceTarget = 0F;
+            if (weekChoose.DistanceTarget != null)
+                distanceTarget = weekChoose.DistanceTarget.Value;
+            else
+                distanceTarget = dataOnes.Sum(it => it.DistanceOfWeek);
+            ViewData["distanceTarget"] = distanceTarget.ToString("N2");
             ViewData["dayMonths"] = JsonConvert.SerializeObject(dayMonths);
             ViewData["DataOne"] = dataOnes;
             ViewData["chartDatasets"] = JsonConvert.SerializeObject(chartDatasetDomains);
@@ -259,9 +284,15 @@ namespace Run4Prize.Controllers
             var claims = HttpContext.User.Claims;
             var userId = claims
                 .FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value;
-            if (model.AthleteId == 0 || model.WeekId == 0 || userId != model.AthleteId.ToString())
+            var isAdmin = claims
+                .Where(x => x.Type == ClaimTypes.Role && x.Value == "Administrator")
+                .FirstOrDefault() != null ? true : false;
+            if(!isAdmin)
             {
-                return RedirectToAction(nameof(Error), new { error = "UserId not equals!" });
+                if (model.AthleteId == 0 || model.WeekId == 0 || userId != model.AthleteId.ToString())
+                {
+                    return RedirectToAction(nameof(Error), new { error = "Forbidden!" });
+                }
             }
             var weekExist = await _dbContext
                 .Weeks
@@ -277,13 +308,9 @@ namespace Run4Prize.Controllers
                 .Where(it => it.AthleteId == model.AthleteId && it.WeekId == model.WeekId)
                 .FirstOrDefault();
             if (weekUserDistances == null)
-            {
                 await _dbContext.WeekUserDistances.AddAsync(_mapper.Map<WeekUserDistanceDomain, WeekUserDistanceEntity>(model));
-            }
             else
-            {
                 weekUserDistances.Distance = model.Distance;
-            }
             await _dbContext.SaveChangesAsync();
             return RedirectToAction(nameof(Index), new { week = model.WeekId });
         }
@@ -296,9 +323,15 @@ namespace Run4Prize.Controllers
             var claims = HttpContext.User.Claims;
             var userId = claims
                 .FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value;
-            if (model.Id == 0 || userId != model.Id.ToString())
+            var isAdmin = claims
+                .Where(x => x.Type == ClaimTypes.Role && x.Value == "Administrator")
+                .FirstOrDefault() != null ? true : false;
+            if (!isAdmin)
             {
-                return RedirectToAction(nameof(Error), new { error = "UserId not equals!" });
+                if (model.Id == 0 || userId != model.Id.ToString())
+                {
+                    return RedirectToAction(nameof(Error), new { error = "Forbibden!" });
+                }
             }
             var weekUserDistances = _dbContext
                 .Athletes
@@ -306,7 +339,7 @@ namespace Run4Prize.Controllers
                 .FirstOrDefault();
             if (weekUserDistances == null)
             {
-                return RedirectToAction(nameof(Error), new { error = "User not found!" });
+                return RedirectToAction(nameof(Error), new { error = "WeekUserDistances is null!" });
             }
             else
             {
@@ -331,27 +364,6 @@ namespace Run4Prize.Controllers
                 return RedirectToAction(nameof(Error));
             var accessToken = await _stravaServices.Authentication(code);
             var tokenDomain = await _accessTokenServices.AddOrUpdate(accessToken);
-            var jobParam = new JobParameter()
-            {
-                IsError = false,
-                IsExecuted = false,
-                JobName = nameof(JobSyncActivites),
-                Parameter = JsonConvert.SerializeObject(new JobSyncActivityParameter()
-                {
-                    AccessToken = accessToken.Token,
-                    FromDate = tokenDomain.IsExist ? null : _run4PrizeAppConfig.from_date
-                })
-            };
-            await _dbContext.JobParameters.AddAsync(jobParam);
-            await _dbContext.SaveChangesAsync();
-            using (var scopeA = _serviceProvider.CreateScope())
-            {
-                var schedulerFactory = scopeA.ServiceProvider.GetRequiredService<ISchedulerFactory>();
-                var scheduler = await schedulerFactory.GetScheduler();
-                var jobDataMap = new JobDataMap();
-                jobDataMap.Put(JobSyncActivites.JobParamKey, true);
-                await scheduler.TriggerJob(JobSyncActivites.jobKey, jobDataMap);
-            }
             await CreateCookieAsync(tokenDomain.Athlete);
             return RedirectToAction(nameof(Index));
         }
@@ -438,7 +450,7 @@ namespace Run4Prize.Controllers
         {
             var logs = await _dbContext.Logs
                 .ToListAsync();
-            foreach(var log in logs)
+            foreach (var log in logs)
             {
                 _dbContext.Entry(log).State = EntityState.Deleted;
             }
@@ -497,6 +509,65 @@ namespace Run4Prize.Controllers
             return Ok("TriggerRefreshToken Done!");
         }
 
+        [HttpGet]
+        [CustomAuthorizationFilterAttribute(Roles = "Administrator")]
+        public async Task<IActionResult> TriggerJobSyncActivities(string? fromDateStr)
+        {
+            DateTime? fromDate = null;
+            if (!string.IsNullOrEmpty(fromDateStr))
+            {
+                try
+                {
+                    fromDate = DateTime.ParseExact(fromDateStr, "yyyyMMdd", null);
+                }
+                catch (Exception)
+                {
+                }
+            }
+            var tokens = await _dbContext.Tokens.Select(it => it.token)
+                .ToListAsync();
+            foreach (var token in tokens)
+            {
+                var jobParam = new JobParameter()
+                {
+                    IsError = false,
+                    IsExecuted = false,
+                    JobName = nameof(JobSyncActivites),
+                    Parameter = JsonConvert.SerializeObject(new JobSyncActivityParameter()
+                    {
+                        AccessToken = token!,
+                        FromDate = fromDate
+                    })
+                };
+                await _dbContext.JobParameters.AddAsync(jobParam);
+            }
+            await _dbContext.SaveChangesAsync();
+            using (var scopeA = _serviceProvider.CreateScope())
+            {
+                var schedulerFactory = scopeA.ServiceProvider.GetRequiredService<ISchedulerFactory>();
+                var scheduler = await schedulerFactory.GetScheduler();
+                var jobDataMap = new JobDataMap();
+                jobDataMap.Put(JobSyncActivites.JobParamKey, true);
+                await scheduler.TriggerJob(JobSyncActivites.jobKey, jobDataMap);
+            }
+            return Ok("TriggerJobSyncActivities Done!");
+        }
+
+        [HttpGet]
+        [CustomAuthorizationFilterAttribute(Roles = "Administrator")]
+        public async Task<IActionResult> DisableWeekTrainings()
+        {
+            var weeks = await _dbContext.Weeks
+                .Where(it => it.Name!.ToUpper().Contains("TẬP LUYỆN"))
+                .ToListAsync();
+            foreach (var week in weeks)
+            {
+                week.IsActive = false;
+            }
+            await _dbContext.SaveChangesAsync();
+            return Ok(JsonConvert.SerializeObject(weeks, Formatting.Indented));
+        }
+
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         [AllowAnonymous]
         public IActionResult Error(string? error)
@@ -527,10 +598,10 @@ namespace Run4Prize.Controllers
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var authProperties = new AuthenticationProperties
             {
-                //AllowRefresh = <bool>,
+                AllowRefresh = true,
                 // Refreshing the authentication session should be allowed.
 
-                //ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(10),
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(20),
                 // The time at which the authentication ticket expires. A 
                 // value set here overrides the ExpireTimeSpan option of 
                 // CookieAuthenticationOptions set with AddCookie.

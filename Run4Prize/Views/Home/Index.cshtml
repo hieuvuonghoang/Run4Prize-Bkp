@@ -30,6 +30,14 @@
                             </form>
                         </div>
                     </div>
+                    <div class="row mt-2">
+                        <div class="col-sm-12">
+                            <button data-toggle="tooltip" data-placement="bottom" type="button" class="btn btn-sm btn-outline-success text1">@athletes?.Sum(it => it.TotalDistance).ToString("N2") Km</button>
+                            <strong> / </strong>
+                            <button type="button" class="btn btn-sm text1 btn-outline-info">@ViewData["distanceTarget"] Km</button>
+                            <span class="text2">(Đã đạt được / Mục tiêu)</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -49,7 +57,8 @@
             else if (athlete.Percent > 30 && athlete.Percent < 50)
             {
                 backgroundColor = "bg-warning";
-            } else
+            }
+            else
             {
                 backgroundColor = "bg-danger";
             }
@@ -59,24 +68,34 @@
                         <div class="d-flex justify-content-between">
                             <div class="d-flex flex-row align-items-center">
                                 <div class="ml-2 c-details">
-                                    <strong>@top. @athlete.FirstName @athlete.LastName</strong>
-                                    <strong> | </strong>
-                                    <span class="text1">Time: @totalMoving (h)</span>
-                                    <strong> | </strong>
-                                    <span class="text1">Pace: @athlete.Pace.ToString("N2")</span>
-                                    <div class="mt-2">
-                                        @if (User.Identity!.IsAuthenticated && @athlete.Id.ToString() == User.Claims.FirstOrDefault(x => x.Type == ClaimTypes.Name)?.Value)
-                                        {
-                                            <button data-toggle="tooltip" data-placement="bottom" title="Chọn màu" name="updateColor" type="button" data-weekid="@ViewData["WeekId"]" data-athleteid="@athlete.Id" data-color="@athlete.ColorCode" style="background-color: @athlete.ColorCode !important;" class="btn btn-sm text1">@athlete.TotalDistance Km</button>
+                                    <div class="d-flex flex-row align-items-center">
+                                        <div class=""><strong>@top. </strong></div>
+                                        <div class=""><strong>&nbsp;&nbsp;</strong></div>
+                                        <div class="">
+                                            <form name="formColor" method="post" asp-action="Color">
+                                                <input hidden name="WeekId" value="@ViewData["WeekId"]" />
+                                                <input hidden name="Id" value="@athlete.Id" />
+                                                <input hidden name="CurrentColorCode" value="@athlete.ColorCode" />
+                                                <input name="ColorCode" type="color" class="form-control form-control-color" value="@athlete.ColorCode" />
+                                            </form>
+                                        </div>
+                                        <div class=""><strong>&nbsp;</strong></div>
+                                        <div class=""><strong>@athlete.LastName @athlete.FirstName</strong></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-sm-12">
+                                            <span class="text1">Time: @totalMoving (h)</span>
+                                            <strong> | </strong>
+                                            <span class="text1">Pace: @athlete.Pace.ToString("N2")</span>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-2">
+                                        <div class="col-sm-12">
+                                            <button data-toggle="tooltip" data-placement="bottom" type="button" class="btn btn-sm btn-outline-success text1">@athlete.TotalDistance.ToString("N2") Km</button>
                                             <strong> / </strong>
-                                            <button data-toggle="tooltip" data-placement="bottom" title="Cập nhật mục tiêu" name="updateDistance" data-weekid="@ViewData["WeekId"]" data-distance="@athlete.DistanceOfWeek" data-athleteid="@athlete.Id" type="button" class="btn btn-success btn-sm text1">@athlete.DistanceOfWeek Km</button>
-                                        }
-                                        else
-                                        {
-                                            <button data-toggle="tooltip" data-placement="bottom" title="Chọn màu" disabled type="button" style="background-color: @athlete.ColorCode !important;" class="btn btn-sm text1">@athlete.TotalDistance Km</button>
-                                            <strong> / </strong>
-                                            <button data-toggle="tooltip" data-placement="bottom" title="Cập nhật mục tiêu" disabled type="button" class="btn btn-success btn-sm text1">@athlete.DistanceOfWeek Km</button>
-                                        }
+                                            <button id="@athlete.Id" data-toggle="tooltip" data-placement="bottom" title="Cập nhật mục tiêu" name="updateDistance" data-weekid="@ViewData["WeekId"]" data-distance="@athlete.DistanceOfWeek" data-athleteid="@athlete.Id" type="button" class="btn btn-sm text1 btn-outline-info">@athlete.DistanceOfWeek Km</button>
+                                            <span class="text2">(Đã đạt được / Mục tiêu)</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -86,7 +105,7 @@
                         </div>
                         <div class="mt-2 ml-2 mr-2">
                             <div class="progress" style="height: 20px;">
-                                <div class="progress-bar @backgroundColor" role="progressbar" style="width: @athlete.Percent%;" aria-valuenow="@athlete.Percent" aria-valuemin="0" aria-valuemax="100">@athlete.Percent.ToString("N2") %</div>
+                                <div id="progress_@athlete.Id" class="progress-bar @backgroundColor" role="progressbar" style="width: @athlete.Percent%;" aria-valuenow="@athlete.Percent" aria-valuemin="0" aria-valuemax="100">@athlete.Percent.ToString("N2") %</div>
                             </div>
                         </div>
                     </div>
@@ -114,74 +133,17 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                    <button id="saveChanges" type="button" class="btn btn-primary">Lưu</button>
+                    <button type="button" id="saveChanges" class="btn btn-primary">Lưu</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal -->
-    <div class="modal fade" id="exampleModalTwo" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-sm modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"> Chọn màu </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form name="formColor" method="post" asp-action="Color">
-                        <input hidden name="Id" value="" />
-                        <input hidden name="WeekId" value="" />
-                        <input type="color" name="ColorCode" value="" class="form-control form-control-sm" />
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                    <button id="saveChangeColors" type="button" class="btn btn-primary">Lưu</button>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 @section Scripts{
     <script>
         $(document).ready(function () {
-
-            const weekName = '@Html.Raw(ViewData["WeekName"])';
-
-            $('button[name="updateDistance"]').on('click', function() {
-                const weekId = $(this).attr('data-weekid');
-                const distance = $(this).attr('data-distance');
-                const athleteid = $(this).attr('data-athleteid');
-                $('form[name="formDistance"] input[name="WeekId"]').val(weekId);
-                $('form[name="formDistance"] input[name="AthleteId"]').val(athleteid);
-                $('form[name="formDistance"] input[name="Distance"]').val(distance);
-                $('#exampleModalLabel').text('Mục tiêu ' + weekName);
-                $('#exampleModal').modal('toggle');
-            })
-
-            $('button[name="updateColor"]').on('click', function () {
-                const color = $(this).attr('data-color');
-                const athleteid = $(this).attr('data-athleteid');
-                const weekId = $(this).attr('data-weekid');
-                $('form[name="formColor"] input[name="ColorCode"]').val(color);
-                $('form[name="formColor"] input[name="Id"]').val(athleteid);
-                $('form[name="formColor"] input[name="WeekId"]').val(weekId);
-                $('#exampleModalTwo').modal('toggle');
-            })
-
-            $('#saveChanges').on('click', function () {
-                document.forms["formDistance"].submit();
-            })
-
-            $('#saveChangeColors').on('click', function () {
-                document.forms["formColor"].submit();
-            })
-
-            $('#sLWeek').on('change', function () {
-                document.forms["formOne"].submit();
-            });
 
             const labels = JSON.parse('@Html.Raw(ViewData["dayMonths"])');
 
@@ -192,7 +154,7 @@
                 datasets: datasets
             }
 
-            console.log(data);
+            const weekName = '@Html.Raw(ViewData["WeekName"])';
 
             const config = {
                 type: 'line',
@@ -229,7 +191,32 @@
                 },
             };
 
-            new Chart("myChart", config);
+            const chart = new Chart("myChart", config);
+
+            $('button[name="updateDistance"]').on('click', function () {
+                const weekId = $(this).attr('data-weekid');
+                const distance = $(this).attr('data-distance');
+                const athleteid = $(this).attr('data-athleteid');
+                $('form[name="formDistance"] input[name="WeekId"]').val(weekId);
+                $('form[name="formDistance"] input[name="AthleteId"]').val(athleteid);
+                $('form[name="formDistance"] input[name="Distance"]').val(distance);
+                $('#exampleModalLabel').text('Mục tiêu ' + weekName);
+                $('#exampleModal').modal('toggle');
+            })
+
+            $('form[name="formColor"] input[name="ColorCode"]').on('change', function (event) {
+                const formData = $(this).parent();
+                formData.submit();
+            })
+
+            $('#saveChanges').on('click', function () {
+                document.forms["formDistance"].submit();
+            })
+
+            $('#sLWeek').on('change', function () {
+                document.forms["formOne"].submit();
+            });
+
         });
     </script>
 }
