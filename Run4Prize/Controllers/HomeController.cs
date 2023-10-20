@@ -90,15 +90,27 @@ namespace Run4Prize.Controllers
                             FromDate = null
                         })
                     };
-                    await _dbContext.JobParameters.AddAsync(jobParam);
-                    await _dbContext.SaveChangesAsync();
-                    using (var scopeA = _serviceProvider.CreateScope())
+                    var dateBefore = DateTime.UtcNow.AddMinutes(-15);
+                    var jobParamLastRunSuccess = await _dbContext.JobParameters
+                        .Where(it => it.Parameter == jobParam.Parameter && it.IsExecuted && it.ExecuteEndDate != null && it.ExecuteEndDate > dateBefore)
+                        .Select(it => new  JobParameter()
+                        {
+                            Id = it.Id
+                        })
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync();
+                    if(jobParamLastRunSuccess == null)
                     {
-                        var schedulerFactory = scopeA.ServiceProvider.GetRequiredService<ISchedulerFactory>();
-                        var scheduler = await schedulerFactory.GetScheduler();
-                        var jobDataMap = new JobDataMap();
-                        jobDataMap.Put(JobSyncActivites.JobParamKey, true);
-                        await scheduler.TriggerJob(JobSyncActivites.jobKey, jobDataMap);
+                        await _dbContext.JobParameters.AddAsync(jobParam);
+                        await _dbContext.SaveChangesAsync();
+                        using (var scopeA = _serviceProvider.CreateScope())
+                        {
+                            var schedulerFactory = scopeA.ServiceProvider.GetRequiredService<ISchedulerFactory>();
+                            var scheduler = await schedulerFactory.GetScheduler();
+                            var jobDataMap = new JobDataMap();
+                            jobDataMap.Put(JobSyncActivites.JobParamKey, true);
+                            await scheduler.TriggerJob(JobSyncActivites.jobKey, jobDataMap);
+                        }
                     }
                 }
                 ViewData[ConstantDomains.UrlUserAvatar] = claimAvatar;
@@ -287,7 +299,7 @@ namespace Run4Prize.Controllers
             var isAdmin = claims
                 .Where(x => x.Type == ClaimTypes.Role && x.Value == "Administrator")
                 .FirstOrDefault() != null ? true : false;
-            if(!isAdmin)
+            if (!isAdmin)
             {
                 if (model.AthleteId == 0 || model.WeekId == 0 || userId != model.AthleteId.ToString())
                 {
@@ -601,12 +613,12 @@ namespace Run4Prize.Controllers
                 AllowRefresh = true,
                 // Refreshing the authentication session should be allowed.
 
-                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(20),
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(90),
                 // The time at which the authentication ticket expires. A 
                 // value set here overrides the ExpireTimeSpan option of 
                 // CookieAuthenticationOptions set with AddCookie.
 
-                //IsPersistent = true,
+                IsPersistent = true,
                 // Whether the authentication session is persisted across 
                 // multiple requests. When used with cookies, controls
                 // whether the cookie's lifetime is absolute (matching the

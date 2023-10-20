@@ -33,7 +33,7 @@ builder.Services.AddScoped<IStravaServices, StravaServices>();
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                 .AddCookie(options =>
                 {
-                    options.ExpireTimeSpan = TimeSpan.FromDays(30);
+                    options.ExpireTimeSpan = TimeSpan.FromDays(90);
                     options.SlidingExpiration = true;
                     options.AccessDeniedPath = "/Forbidden/";
                 });
@@ -133,7 +133,6 @@ using (var scope = app.Services.CreateScope())
     var task = schedulerFactory.GetScheduler();
     task.Wait();
     var scheduler = task.Result;
-    //var scheduler = schedulerFactory.GetScheduler().Wait();
 
     // define the job and tie it to our HelloJob class
     var jobSyncActivites = JobBuilder.Create<JobSyncActivites>()
@@ -162,7 +161,7 @@ using (var scope = app.Services.CreateScope())
         .StartNow()
         //.WithSimpleSchedule(x => x.WithInterval(TimeSpan.FromSeconds(60)).RepeatForever())
         .WithSchedule(
-            CronScheduleBuilder.CronSchedule("0 0 0/2 ? * * *")
+            CronScheduleBuilder.CronSchedule("0 0,15,30,45 * ? * * *")
             .InTimeZone(TimeZoneInfo.GetSystemTimeZones().Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
             .First())
         )
