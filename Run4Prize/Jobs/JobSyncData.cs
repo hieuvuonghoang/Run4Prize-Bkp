@@ -177,7 +177,7 @@ namespace Run4Prize.Jobs
                                 Name = team.name,
                                 Rank = team.rank,
                                 Uid = team.teamId,
-                                TotalDistance = team.distance / 1000
+                                TotalDistance = team.distance
                             };
                             dbContext.Teams.Add(teamEntity);
                             dbContext.SaveChanges();
