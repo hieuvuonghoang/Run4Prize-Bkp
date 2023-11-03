@@ -33,7 +33,13 @@ namespace Run4Prize.Controllers
             {
                 var schedulerFactory = scopeA.ServiceProvider.GetRequiredService<ISchedulerFactory>();
                 var scheduler = await schedulerFactory.GetScheduler();
-                await scheduler.TriggerJob(JobSyncData.jobKey);
+                var executingJobs = await scheduler.GetCurrentlyExecutingJobs();
+                if(executingJobs.Where(it => it.JobDetail.Key == JobSyncData.jobKey).FirstOrDefault() != null)
+                {
+                    return Ok("Job is running...");
+                } else {
+                    await scheduler.TriggerJob(JobSyncData.jobKey);
+                }
             }
             return Ok("Trigger done!");
         }
@@ -108,6 +114,12 @@ namespace Run4Prize.Controllers
                 .Where(it => it.Type == (int)EnumSetting.TeamId)
                 .AsNoTracking()
                 .FirstOrDefault();
+            var log = _dbContext.Logs
+                .Where(it => it.Type == "INF")
+                .OrderByDescending(it => it.Id)
+                .AsNoTracking()
+                .FirstOrDefault();
+            ViewData["lastUpdate"] = (log != null && log!.EndDate != null) ? log.EndDate.Value.ToString("HH:mm:ss dd/MM/yyyy") : null;
             ViewData["teamId"] = teamSetting!.Value;
             ViewData["data"] = teams;
             ViewData["toDate"] = toDate;

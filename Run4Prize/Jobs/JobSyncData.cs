@@ -176,7 +176,8 @@ namespace Run4Prize.Jobs
                             {
                                 Name = team.name,
                                 Rank = team.rank,
-                                Uid = team.teamId
+                                Uid = team.teamId,
+                                TotalDistance = team.distance / 1000
                             };
                             dbContext.Teams.Add(teamEntity);
                             dbContext.SaveChanges();
@@ -231,10 +232,16 @@ namespace Run4Prize.Jobs
 
                     #endregion
 
+                    var timeZoneVN = TimeZoneInfo
+                       .GetSystemTimeZones()
+                       .Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
+                       .First();
+                    var nowVN = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneVN);
                     dbContext.Logs.Add(new Log()
                     {
                         Mess = "JobSyncData Done!",
-                        Type = "INF"
+                        Type = "INF",
+                        EndDate = nowVN
                     });
                     await dbContext.SaveChangesAsync();
                 }

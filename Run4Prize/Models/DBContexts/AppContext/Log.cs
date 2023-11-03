@@ -4,6 +4,7 @@
     {
         public int Id { get; set; }
         public string? Type { get; set; }
+        public DateTime? EndDate { get; set; }
         public string? Mess { get; set; }
     }
 }

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Run4Prize.Models.DBContexts.AppContext;
 
@@ -11,9 +12,11 @@ using Run4Prize.Models.DBContexts.AppContext;
 namespace Run4Prize.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    partial class AppDBContextModelSnapshot : ModelSnapshot
+    [Migration("20231103154703_Update06")]
+    partial class Update06
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -54,7 +57,7 @@ namespace Run4Prize.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("EndDate")
+                    b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Mess")
@@ -130,9 +133,6 @@ namespace Run4Prize.Migrations
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<double>("Rank")
-                        .HasColumnType("float");
-
-                    b.Property<double>("TotalDistance")
                         .HasColumnType("float");
 
                     b.Property<string>("Uid")

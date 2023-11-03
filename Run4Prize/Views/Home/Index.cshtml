@@ -4,6 +4,7 @@
     var toDate = (DateTime)ViewData["toDate"]!;
     var fromDate = (DateTime)ViewData["fromDate"]!;
     var teams = (List<Run4Prize.Models.DBContexts.AppContext.Team>)ViewData["data"]!;
+    ViewData["dats"] = toDate.ToString("yyyy-MM-dd");
 }
 
 <div class="accordion" id="accordionPanelsStayOpenExample">
@@ -11,14 +12,14 @@
     {
         <div class="accordion-item">
             <h2 class="accordion-header" id="@Html.Raw("heading" + team.Id)">
-                <button class="accordion-button @Html.Raw(team.Uid != teamId ? "collapsed" : "")" type="button" data-bs-toggle="collapse" data-bs-target="@Html.Raw("#collapse" + team.Id)" aria-expanded="@Html.Raw(team.Uid == teamId ? "true" : "false")" aria-controls="@Html.Raw("collapse" + team.Id)">
-                    @Html.Raw(team.Rank + " - " + team.Name)
+                <button class="fw-bold accordion-button @Html.Raw(team.Uid != teamId ? "collapsed" : "")" type="button" data-bs-toggle="collapse" data-bs-target="@Html.Raw("#collapse" + team.Id)" aria-expanded="@Html.Raw(team.Uid == teamId ? "true" : "false")" aria-controls="@Html.Raw("collapse" + team.Id)">
+                    @Html.Raw(team.Rank + " - " + team.Name + " - " + team.TotalDistance.ToString("N2"))
                 </button>
             </h2>
             <div id="@Html.Raw("collapse" + team.Id)" class="accordion-collapse collapse @Html.Raw(team.Uid == teamId ? "show" : "")">
                 <div class="accordion-body">
                     <div class="table-responsive">
-                        <table class="table table-sm">
+                        <table class="table table-sm table-bordered">
                             <thead>
                                 <tr>
                                     <th scope="col">#</th>
@@ -44,10 +45,10 @@
                                     foreach (var member in team.Members!)
                                     {
                                         <tr>
-                                            <td>
-                                                @sTT.
-                                            </td>
-                                            <td>
+                                            <th scope="row">
+                                                @sTT
+                                            </th>
+                                            <td class="text-nowrap fw-bold">
                                                 @member.Name
                                             </td>
                                             <td>
@@ -80,29 +81,31 @@
                                         </tr>
                                         sTT++;
                                     }
-                                    <tr>
-                                    <td colspan="2">Total</td>
+                                }
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="2" class="text-center fw-bold">Total</td>
                                     <td>
                                         @team.Members!.Sum(it => it.Distances!.Sum(it => it.TotalDistance)).ToString("N2")
                                     </td>
-                                        @{
-                                            var fromDateTmpThree = fromDate.AddSeconds(0);
-                                            while (true)
+                                    @{
+                                        var fromDateTmpThree = fromDate.AddSeconds(0);
+                                        while (true)
+                                        {
+                                            if (fromDateTmpThree < toDate)
                                             {
-                                                if (fromDateTmpThree < toDate)
-                                                {
-                                                    break;
-                                                }
-                                                var distances = team.Members!.Sum(it => it.Distances!.Where(it => it.CreateDate == fromDateTmpThree).Sum(it => it.TotalDistance));
-                                                <td>
-                                                    @distances.ToString("N2")
-                                                </td>
-                                                fromDateTmpThree = fromDateTmpThree.AddDays(-1);
+                                                break;
                                             }
+                                            var distances = team.Members!.Sum(it => it.Distances!.Where(it => it.CreateDate == fromDateTmpThree).Sum(it => it.TotalDistance));
+                                            <td>
+                                                @distances.ToString("N2")
+                                            </td>
+                                            fromDateTmpThree = fromDateTmpThree.AddDays(-1);
                                         }
-                                    </tr>
-                                }
-                            </tbody>
+                                    }
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>

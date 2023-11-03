@@ -8,6 +8,7 @@ namespace Run4Prize.Models.DBContexts.AppContext
         public string? Name { get; set; }
         public double Rank { get; set; }
         public string? Uid { get; set; }
+        public double TotalDistance { get; set; }
         [NotMapped]
         public List<Member>? Members { get; set; }
     }
