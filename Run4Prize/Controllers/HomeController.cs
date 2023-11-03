@@ -64,9 +64,10 @@ namespace Run4Prize.Controllers
                .GetSystemTimeZones()
                .Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
                .First();
-            var nowVN = TimeZoneInfo.ConvertTime(new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day), timeZoneVN);
-            DateTime toDate = TimeZoneInfo.ConvertTime(new DateTime(nowVN.Year, nowVN.Month, nowVN.Day), timeZoneVN);
-            if(nowVN.DayOfWeek != DayOfWeek.Monday)
+            var nowVN = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneVN);
+            nowVN = new DateTime(nowVN.Year, nowVN.Month, nowVN.Day, 0, 0, 0);
+            DateTime toDate = nowVN.AddSeconds(0);
+            if (nowVN.DayOfWeek != DayOfWeek.Monday)
             {
                 while (true)
                 {
@@ -80,7 +81,6 @@ namespace Run4Prize.Controllers
             if(!string.IsNullOrEmpty(dats))
             {
                 DateTime.TryParse(dats, out toDate);
-                toDate = TimeZoneInfo.ConvertTime(toDate, timeZoneVN);
             }
             var teams = await _dbContext.Teams.AsNoTracking().ToListAsync();
             var members = await _dbContext.Members.AsNoTracking().ToListAsync();
