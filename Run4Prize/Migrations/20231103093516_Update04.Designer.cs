@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Run4Prize.Models.DBContexts.AppContext;
 
@@ -11,9 +12,11 @@ using Run4Prize.Models.DBContexts.AppContext;
 namespace Run4Prize.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    partial class AppDBContextModelSnapshot : ModelSnapshot
+    [Migration("20231103093516_Update04")]
+    partial class Update04
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -128,9 +131,6 @@ namespace Run4Prize.Migrations
 
                     b.Property<double>("Rank")
                         .HasColumnType("float");
-
-                    b.Property<string>("Uid")
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

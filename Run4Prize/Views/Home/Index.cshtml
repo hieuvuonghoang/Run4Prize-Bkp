@@ -1,221 +1,119 @@
-﻿@using System.Security.Claims;
-@addTagHelper*, Microsoft.AspNetCore.Mvc.TagHelpers
-@model SelectList
-
-@{
+﻿@{
     ViewData["Title"] = "Home Page";
-    var athletes = ViewData["DataOne"] as List<Run4Prize.Models.Domains.AthleteDomain>;
-    var top = 1;
+    var teamId = (string)ViewData["teamId"]!;
+    var toDate = (DateTime)ViewData["toDate"]!;
+    var fromDate = (DateTime)ViewData["fromDate"]!;
+    var teams = (List<Run4Prize.Models.DBContexts.AppContext.Team>)ViewData["data"]!;
 }
 
-<div class="row mt-3 mb-3 justify-content-md-center">
-
-    <div class="col-sm-12 col-md-8 col-lg-6 col-xl-5">
-
-        <div class="row">
-            <div class="col-sm-12">
-                <div class="card mb-2" style="padding: 20px !important;">
-                    <canvas id="myChart" style="width:80%;height: 75%;"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-sm-12">
-                <div class="card p-3 mb-2">
-                    <div class="row">
-                        <div class="col-sm-12">
-                            <form name="formOne" method="get" asp-action="Index">
-                                <select id="sLWeek" name="week" asp-items="Model" class="form-control form-control-sm"></select>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="row mt-2">
-                        <div class="col-sm-12">
-                            <button data-toggle="tooltip" data-placement="bottom" type="button" class="btn btn-sm btn-outline-success text1">@athletes?.Sum(it => it.TotalDistance).ToString("N2") Km</button>
-                            <strong> / </strong>
-                            <button type="button" class="btn btn-sm text1 btn-outline-info">@ViewData["distanceTarget"] Km</button>
-                            <span class="text2">(Đã đạt được / Mục tiêu)</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        @foreach (var athlete in athletes!)
-        {
-            var totalMoving = (athlete.TotalTime / 60).ToString("N2");
-            var backgroundColor = "";
-            if (athlete.Percent >= 100)
-            {
-                backgroundColor = "bg-success";
-            }
-            else if (athlete.Percent >= 50 && athlete.Percent < 100)
-            {
-                backgroundColor = "bg-info";
-            }
-            else if (athlete.Percent > 30 && athlete.Percent < 50)
-            {
-                backgroundColor = "bg-warning";
-            }
-            else
-            {
-                backgroundColor = "bg-danger";
-            }
-            <div class="row">
-                <div class="col-sm-12">
-                    <div class="card p-3 mb-2">
-                        <div class="d-flex justify-content-between">
-                            <div class="d-flex flex-row align-items-center">
-                                <div class="ml-2 c-details">
-                                    <div class="d-flex flex-row align-items-center">
-                                        <div class=""><strong>@top. </strong></div>
-                                        <div class=""><strong>&nbsp;&nbsp;</strong></div>
-                                        <div class="">
-                                            <form name="formColor" method="post" asp-action="Color">
-                                                <input hidden name="WeekId" value="@ViewData["WeekId"]" />
-                                                <input hidden name="Id" value="@athlete.Id" />
-                                                <input hidden name="CurrentColorCode" value="@athlete.ColorCode" />
-                                                <input name="ColorCode" type="color" class="form-control form-control-color" value="@athlete.ColorCode" />
-                                            </form>
-                                        </div>
-                                        <div class=""><strong>&nbsp;</strong></div>
-                                        <div class=""><strong>@athlete.LastName @athlete.FirstName</strong></div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-sm-12">
-                                            <span class="text1">Time: @totalMoving (h)</span>
-                                            <strong> | </strong>
-                                            <span class="text1">Pace: @athlete.Pace.ToString("N2")</span>
-                                        </div>
-                                    </div>
-                                    <div class="row mt-2">
-                                        <div class="col-sm-12">
-                                            <button data-toggle="tooltip" data-placement="bottom" type="button" class="btn btn-sm btn-outline-success text1">@athlete.TotalDistance.ToString("N2") Km</button>
-                                            <strong> / </strong>
-                                            <button id="@athlete.Id" data-toggle="tooltip" data-placement="bottom" title="Cập nhật mục tiêu" name="updateDistance" data-weekid="@ViewData["WeekId"]" data-distance="@athlete.DistanceOfWeek" data-athleteid="@athlete.Id" type="button" class="btn btn-sm text1 btn-outline-info">@athlete.DistanceOfWeek Km</button>
-                                            <span class="text2">(Đã đạt được / Mục tiêu)</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="badge">
-                                <img src="@athlete.Profile" width="50" height="50" class="rounded-circle shadow-sm bg-white rounded">
-                            </div>
-                        </div>
-                        <div class="mt-2 ml-2 mr-2">
-                            <div class="progress" style="height: 20px;">
-                                <div id="progress_@athlete.Id" class="progress-bar @backgroundColor" role="progressbar" style="width: @athlete.Percent%;" aria-valuenow="@athlete.Percent" aria-valuemin="0" aria-valuemax="100">@athlete.Percent.ToString("N2") %</div>
-                            </div>
-                        </div>
+<div class="accordion" id="accordionPanelsStayOpenExample">
+    @foreach (var team in teams)
+    {
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="@Html.Raw("heading" + team.Id)">
+                <button class="accordion-button @Html.Raw(team.Uid != teamId ? "collapsed" : "")" type="button" data-bs-toggle="collapse" data-bs-target="@Html.Raw("#collapse" + team.Id)" aria-expanded="@Html.Raw(team.Uid == teamId ? "true" : "false")" aria-controls="@Html.Raw("collapse" + team.Id)">
+                    @Html.Raw(team.Rank + " - " + team.Name)
+                </button>
+            </h2>
+            <div id="@Html.Raw("collapse" + team.Id)" class="accordion-collapse collapse @Html.Raw(team.Uid == teamId ? "show" : "")">
+                <div class="accordion-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Total</th>
+                                    @{
+                                        var formDateTmp = fromDate.AddSeconds(0);
+                                        while (true)
+                                        {
+                                            if (formDateTmp < toDate)
+                                            {
+                                                break;
+                                            }
+                                            <th scope="col">@formDateTmp.ToString("dd/MM")</th>
+                                            formDateTmp = formDateTmp.AddDays(-1);
+                                        }
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{
+                                    var sTT = 1;
+                                    foreach (var member in team.Members!)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @sTT.
+                                            </td>
+                                            <td>
+                                                @member.Name
+                                            </td>
+                                            <td>
+                                                @member.Distances!.Sum(it => it.TotalDistance).ToString("N2")
+                                            </td>
+                                            @{
+                                                var fromDateTmpTwo = fromDate.AddSeconds(0);
+                                                while (true)
+                                                {
+                                                    if (fromDateTmpTwo < toDate)
+                                                    {
+                                                        break;
+                                                    }
+                                                    var distances = member.Distances!.Where(it => it.CreateDate == fromDateTmpTwo).FirstOrDefault();
+                                                    if (distances != null)
+                                                    {
+                                                        <td>
+                                                            @distances.TotalDistance.ToString("N2")
+                                                        </td>
+                                                    }
+                                                    else
+                                                    {
+                                                        <td>
+                                                            0
+                                                        </td>
+                                                    }
+                                                    fromDateTmpTwo = fromDateTmpTwo.AddDays(-1);
+                                                }
+                                            }
+                                        </tr>
+                                        sTT++;
+                                    }
+                                    <tr>
+                                    <td colspan="2">Total</td>
+                                    <td>
+                                        @team.Members!.Sum(it => it.Distances!.Sum(it => it.TotalDistance)).ToString("N2")
+                                    </td>
+                                        @{
+                                            var fromDateTmpThree = fromDate.AddSeconds(0);
+                                            while (true)
+                                            {
+                                                if (fromDateTmpThree < toDate)
+                                                {
+                                                    break;
+                                                }
+                                                var distances = team.Members!.Sum(it => it.Distances!.Where(it => it.CreateDate == fromDateTmpThree).Sum(it => it.TotalDistance));
+                                                <td>
+                                                    @distances.ToString("N2")
+                                                </td>
+                                                fromDateTmpThree = fromDateTmpThree.AddDays(-1);
+                                            }
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
-            top++;
-        }
-
-    </div>
-
-    <!-- Modal -->
-    <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-sm modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel"> </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form name="formDistance" method="post" asp-action="Distance">
-                        <input hidden name="WeekId" value="" />
-                        <input hidden name="AthleteId" value="" />
-                        <input type="number" name="Distance" value="" min="0" step="1" class="form-control form-control-sm" />
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                    <button type="button" id="saveChanges" class="btn btn-primary">Lưu</button>
-                </div>
-            </div>
         </div>
-    </div>
-
+    }
 </div>
 
 @section Scripts{
     <script>
         $(document).ready(function () {
-
-            const labels = JSON.parse('@Html.Raw(ViewData["dayMonths"])');
-
-            const datasets = JSON.parse('@Html.Raw(ViewData["chartDatasets"])');
-
-            const data = {
-                labels: labels,
-                datasets: datasets
-            }
-
-            const weekName = '@Html.Raw(ViewData["WeekName"])';
-
-            const config = {
-                type: 'line',
-                data: data,
-                options: {
-                    indexAxis: 'x',
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Tổng quan thành tích tập luyện'
-                        },
-                        legend: {
-                            display: false
-                        }
-                    },
-                    interaction: {
-                        intersect: false,
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'KM',
-                                position: 'top'
-                            },
-                            min: 0,
-                            ticks: {
-                                stepSize: 0.5
-                            }
-                        }
-                    }
-                },
-            };
-
-            const chart = new Chart("myChart", config);
-
-            $('button[name="updateDistance"]').on('click', function () {
-                const weekId = $(this).attr('data-weekid');
-                const distance = $(this).attr('data-distance');
-                const athleteid = $(this).attr('data-athleteid');
-                $('form[name="formDistance"] input[name="WeekId"]').val(weekId);
-                $('form[name="formDistance"] input[name="AthleteId"]').val(athleteid);
-                $('form[name="formDistance"] input[name="Distance"]').val(distance);
-                $('#exampleModalLabel').text('Mục tiêu ' + weekName);
-                $('#exampleModal').modal('toggle');
-            })
-
-            $('form[name="formColor"] input[name="ColorCode"]').on('change', function (event) {
-                const formData = $(this).parent();
-                formData.submit();
-            })
-
-            $('#saveChanges').on('click', function () {
-                document.forms["formDistance"].submit();
-            })
-
-            $('#sLWeek').on('change', function () {
-                document.forms["formOne"].submit();
-            });
 
         });
     </script>

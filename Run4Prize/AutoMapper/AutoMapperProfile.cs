@@ -1,12 +1,4 @@
 ﻿using AutoMapper;
-using com.strava.v3.api.Activities;
-using com.strava.v3.api.Athletes;
-using com.strava.v3.api.Authentication;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Newtonsoft.Json.Linq;
-using Run4Prize.Models.DBContexts.AppContext;
-using Run4Prize.Models.Domains;
-using System;
 
 namespace Run4Prize.AutoMapper
 {
@@ -14,47 +6,6 @@ namespace Run4Prize.AutoMapper
     {
         public AutoMapperProfile()
         {
-            CreateMap<Athlete, AthleteEntity>();
-            CreateMap<AthleteEntity, Athlete>();
-            CreateMap<Athlete, Athlete>();
-            CreateMap<AthleteEntity, AthleteEntity>();
-
-            CreateMap<AccessToken, AccessTokenEntity>();
-            CreateMap<AccessTokenEntity, AccessToken>();
-            CreateMap<AccessToken, AccessToken>();
-            CreateMap<AccessTokenEntity, AccessTokenEntity>();
-
-            CreateMap<AccessTokenDomain, AccessTokenEntity>()
-                .ForMember(dest => dest.Athlete, act => act.Ignore());
-            CreateMap<AccessTokenEntity, AccessTokenDomain>()
-                .ForMember(dest => dest.Athlete, act => act.Ignore());
-
-            CreateMap<AthleteDomain, AthleteEntity>()
-                .ForMember(dest => dest.Activities, act => act.Ignore());
-            CreateMap<AthleteDomain, AthleteDomain>();
-            CreateMap<AthleteEntity, AthleteDomain>();
-            //    .ForMember(dest => dest.AccessToken, act => act.Ignore())
-            //    .ForMember(dest => dest.Activities, act => act.Ignore());
-
-            CreateMap<ActivityDomain, ActivityEntity>()
-                .ForMember(dest => dest.Athlete, act => act.Ignore());
-            CreateMap<ActivityEntity, ActivityDomain>();
-            //   .ForMember(dest => dest.Athlete, act => act.Ignore());
-
-            CreateMap<ActivitySummary, ActivityEntity>()
-                .ForMember(dest => dest.Athlete, act => act.Ignore());
-
-            CreateMap<string, DateTime>().ConvertUsing<StringToDateTimeConverter>();
-
-            CreateMap<ChartDatasetDomain, ChartDatasetDomain>();
-
-            CreateMap<WeekUserDistanceDomain, WeekUserDistanceEntity>()
-                .ForMember(dest => dest.Athlete, act => act.Ignore())
-                .ForMember(dest => dest.Week, act => act.Ignore());
-
-            CreateMap<WeekUserDistanceDomain, WeekUserDistanceDomain>();
-            CreateMap<WeekUserDistanceEntity, WeekUserDistanceDomain>();
-            CreateMap<WeekUserDistanceEntity, WeekUserDistanceEntity>();
         }
     }
 

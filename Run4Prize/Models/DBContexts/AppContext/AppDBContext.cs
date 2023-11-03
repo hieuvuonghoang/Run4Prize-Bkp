@@ -8,92 +8,86 @@ namespace Run4Prize.Models.DBContexts.AppContext
         {
         }
 
-        public DbSet<AthleteEntity> Athletes { get; set; }
-        public DbSet<AccessTokenEntity> Tokens { get; set; }
-        public DbSet<ActivityEntity> Activities { get; set; }
-        public DbSet<LogEntity> Logs { get; set; }
-        public DbSet<JobParameter> JobParameters { get; set; }
-        public DbSet<WeekEntity> Weeks { get; set; }
-        public DbSet<WeekUserDistanceEntity> WeekUserDistances { get; set; }
+        public DbSet<Setting> Settings { get; set; }
+        public DbSet<Team> Teams { get; set; }
+        public DbSet<Member> Members { get; set; }
+        public DbSet<Distance> Distances { get; set; }
+        public DbSet<Log> Logs { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<WeekUserDistanceEntity>()
-                .ToTable("WeekUserDistances");
-            modelBuilder.Entity<WeekUserDistanceEntity>()
+            modelBuilder.Entity<Team>()
+                .ToTable("Teams");
+            modelBuilder.Entity<Team>()
                 .HasKey(it => it.Id);
-            modelBuilder.Entity<WeekUserDistanceEntity>()
+            modelBuilder.Entity<Team>()
                 .Property(it => it.Id)
                 .ValueGeneratedOnAdd();
+            modelBuilder.Entity<Team>()
+                .Property(it => it.Name)
+                .HasMaxLength(50)
+                .IsRequired(true);
 
-            modelBuilder.Entity<WeekEntity>()
-                .ToTable("Weeks");
-            modelBuilder.Entity<WeekEntity>()
+            modelBuilder.Entity<Member>()
+                .ToTable("Members");
+            modelBuilder.Entity<Member>()
                 .HasKey(it => it.Id);
-            modelBuilder.Entity<WeekEntity>()
+            modelBuilder.Entity<Member>()
+                .HasIndex(it => it.TeamId);
+            modelBuilder.Entity<Member>()
                 .Property(it => it.Id)
                 .ValueGeneratedOnAdd();
+            modelBuilder.Entity<Member>()
+                .Property(it => it.Name)
+                .HasMaxLength(50)
+                .IsRequired(true);
 
-            modelBuilder.Entity<JobParameter>()
-                .ToTable("JobParameters");
-            modelBuilder.Entity<JobParameter>()
+            modelBuilder.Entity<Distance>()
+                .ToTable("Distances");
+            modelBuilder.Entity<Distance>()
                 .HasKey(it => it.Id);
-            modelBuilder.Entity<JobParameter>()
+            modelBuilder.Entity<Distance>()
+                .HasIndex(it => it.MemberId);
+            modelBuilder.Entity<Distance>()
                 .Property(it => it.Id)
                 .ValueGeneratedOnAdd();
+            modelBuilder.Entity<Distance>()
+                .Property(it => it.CreateDate)
+                .IsRequired(true);
+            modelBuilder.Entity<Distance>()
+                .Property(it => it.TotalDistance)
+                .IsRequired(true);
 
-            modelBuilder.Entity<LogEntity>()
+            modelBuilder.Entity<Setting>()
+                .ToTable("Settings");
+            modelBuilder.Entity<Setting>()
+                .HasKey(it => it.Id);
+            modelBuilder.Entity<Setting>()
+                .Property(it => it.Id)
+                .ValueGeneratedOnAdd();
+            modelBuilder.Entity<Setting>()
+                .Property(it => it.Type)
+                .IsRequired(true);
+            modelBuilder.Entity<Setting>()
+                .Property(it => it.Value)
+                .HasMaxLength(500)
+                .IsUnicode(true);
+
+            modelBuilder.Entity<Log>()
                 .ToTable("Logs");
-            modelBuilder.Entity<LogEntity>()
+            modelBuilder.Entity<Log>()
                 .HasKey(it => it.Id);
-            modelBuilder.Entity<LogEntity>()
+            modelBuilder.Entity<Log>()
                 .Property(it => it.Id)
                 .ValueGeneratedOnAdd();
-
-
-            modelBuilder.Entity<AthleteEntity>()
-                .ToTable("Athletes");
-            modelBuilder.Entity<AthleteEntity>()
-                .HasKey(it => it.Id);
-            modelBuilder.Entity<AthleteEntity>()
-                .Property(it => it.Id)
-                .ValueGeneratedNever();
-
-            modelBuilder.Entity<AccessTokenEntity>()
-                .ToTable("Tokens");
-            modelBuilder.Entity<AccessTokenEntity>()
-                .HasKey(it => it.Id);
-            modelBuilder.Entity<AccessTokenEntity>()
-                .Property(it => it.Id)
-                .ValueGeneratedOnAdd();
-
-            modelBuilder.Entity<ActivityEntity>()
-                .ToTable("Activities");
-            modelBuilder.Entity<ActivityEntity>()
-                .HasKey(it => it.Id);
-            modelBuilder.Entity<ActivityEntity>()
-                .Property(it => it.Id)
-                .ValueGeneratedNever();
-
-            modelBuilder.Entity<AthleteEntity>()
-                .HasOne<AccessTokenEntity>(it => it.AccessToken)
-                .WithOne(it => it.Athlete)
-                .HasForeignKey<AccessTokenEntity>(it => it.AthleteId);
-
-            modelBuilder.Entity<ActivityEntity>()
-                .HasOne<AthleteEntity>(s => s.Athlete)
-                .WithMany(g => g.Activities)
-                .HasForeignKey(s => s.AthleteId);
-
-            modelBuilder.Entity<WeekUserDistanceEntity>()
-                .HasOne<AthleteEntity>(it => it.Athlete)
-                .WithMany(it => it.WeekUserDistances)
-                .HasForeignKey(it => it.AthleteId);
-
-            modelBuilder.Entity<WeekUserDistanceEntity>()
-                .HasOne<WeekEntity>(it => it.Week)
-                .WithMany(it => it.WeekUserDistances)
-                .HasForeignKey(it => it.WeekId);
+            modelBuilder.Entity<Log>()
+                .Property(it => it.Type)
+                .HasMaxLength(10)
+                .IsRequired(true);
+            modelBuilder.Entity<Log>()
+                .Property(it => it.Mess)
+                .IsRequired(true)
+                .IsUnicode(true);
         }
     }
 }

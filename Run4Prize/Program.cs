@@ -3,50 +3,27 @@ using Microsoft.EntityFrameworkCore;
 using Quartz;
 using Quartz.AspNetCore;
 using Run4Prize.AutoMapper;
+using Run4Prize.Enum;
 using Run4Prize.Jobs;
 using Run4Prize.Models.DBContexts.AppContext;
-using Run4Prize.Models.Domains;
+using Run4Prize.Models.Domains.Configs;
 using Run4Prize.Services;
-using Run4Prize.Services.AccessTokenServices;
-using Run4Prize.Services.ActivityServices;
-using Run4Prize.Services.AthleteServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-builder.Services.Configure<Run4PrizeAppConfig>(builder.Configuration.GetSection(nameof(Run4PrizeAppConfig)));
-
-builder.Services.AddHttpClient(StravaServices.URL_GET_ACCESS_TOKEN, httpClient =>
-{
-    httpClient.BaseAddress = new Uri(StravaServices.URL_GET_ACCESS_TOKEN);
-});
-
-builder.Services.AddHttpClient(StravaServices.URL_GET_ACTIVITIES, httpClient =>
-{
-    httpClient.BaseAddress = new Uri(StravaServices.URL_GET_ACTIVITIES);
-});
-
-builder.Services.AddScoped<IStravaServices, StravaServices>();
-
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-                .AddCookie(options =>
-                {
-                    options.ExpireTimeSpan = TimeSpan.FromDays(90);
-                    options.SlidingExpiration = true;
-                    options.AccessDeniedPath = "/Forbidden/";
-                });
+builder.Services.Configure<APIConfig>(builder.Configuration.GetSection(nameof(APIConfig)));
 
 builder.Services.AddDbContext<AppDBContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
 
-builder.Services.AddScoped<IAthleteServices, AthleteServices>();
-
-builder.Services.AddScoped<IAccessTokenServices, AccessTokenServices>();
-
-builder.Services.AddScoped<IActivityServices, ActivityServices>();
+builder.Services.AddHttpClient(nameof(APIConfig), cfg =>
+{
+    cfg.BaseAddress = new Uri(builder.Configuration.GetSection(nameof(APIConfig)).GetSection(nameof(APIConfig.DomainUrl)).Value!);
+});
 
 builder.Services.AddQuartz(q =>
 {
@@ -60,9 +37,11 @@ builder.Services.AddQuartzServer(options =>
     options.WaitForJobsToComplete = true;
 });
 
-builder.Services.AddSingleton<JobSyncActivites>();
+builder.Services.AddScoped<ITopTeamServices, TopTeamServices>();
+builder.Services.AddScoped<IScoreBoardServices, ScoreBoardServices>();
+builder.Services.AddScoped<IActivityServices, ActivityServices>();
 
-builder.Services.AddSingleton<JobRefreshToken>();
+builder.Services.AddSingleton<JobSyncData>();
 
 
 var app = builder.Build();
@@ -73,77 +52,59 @@ using (var scope = app.Services.CreateScope())
     var taskMigrate = dbContext.Database.MigrateAsync();
     taskMigrate.Wait();
 
-    //var weeks = new List<WeekEntity>();
-    //// From 00:00 ngày 21/10/2023 – 23:59 To 17/12/2023
-    //var timeZone = TimeZoneInfo
-    //    .GetSystemTimeZones().Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
-    //    .First();
-    //weeks.Add(new WeekEntity()
-    //{
-    //    Name = $"Tập luyện 1",
-    //    FromDate = new DateTimeWithZone(new DateTime(2023, 10, 14, 00, 00, 00), timeZone).UniversalTime,
-    //    ToDate = new DateTimeWithZone(new DateTime(2023, 10, 20, 23, 59, 59), timeZone).UniversalTime,
-    //    IsActive = true,
-    //    DistanceTarget = null,
-    //});
-    //var fromDate = new DateTimeWithZone(new DateTime(2023, 10, 21, 00, 00, 00), timeZone).UniversalTime;
-    //var toDate = new DateTimeWithZone(new DateTime(2023, 12, 17, 23, 59, 59), timeZone).UniversalTime;
-    //weeks.Add(new WeekEntity()
-    //{
-    //    Name = $"Tất cả",
-    //    FromDate = fromDate,
-    //    ToDate = toDate,
-    //    IsActive = true,
-    //    DistanceTarget = 450
-    //});
-    //for (var i = 1; i <= 9; i++)
-    //{
-    //    var isDone = false;
-    //    var toDateTmp = fromDate.AddDays(7).AddSeconds(-1);
-    //    if (toDateTmp > toDate)
-    //    {
-    //        toDateTmp = toDate;
-    //        isDone = false;
-    //    }
-    //    weeks.Add(new WeekEntity()
-    //    {
-    //        Name = $"Tuần {i}",
-    //        FromDate = fromDate.AddSeconds(0),
-    //        ToDate = toDateTmp,
-    //        IsActive = true,
-    //        DistanceTarget = null,
-    //    });
-    //    fromDate = fromDate.AddDays(7);
-    //    if (isDone)
-    //        break;
-    //}
-    //var weekEntities = dbContext.Weeks.ToList();
-    //foreach(var weekEntity in weekEntities)
-    //{
-    //    dbContext.Entry(weekEntity).State = EntityState.Deleted;
-    //}
-    //dbContext.SaveChanges();
-    //foreach (var week in weeks)
-    //{
-    //    dbContext.Weeks.Add(week);
-    //}
-    //dbContext.SaveChanges();
+    #region "Seeds DataBase"
+
+    var settingCookie = dbContext.Settings.Where(it => it.Type == (int)EnumSetting.Cookie).FirstOrDefault();
+    if(settingCookie == null)
+    {
+        dbContext.Settings.Add(new Setting()
+        {
+            Type = (int)EnumSetting.Cookie,
+            Value = "locale=vi; " +
+                    "vr-auth_org=s%3AeyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NTFhODgwMzI2NTk2YTI5YjM4ZGEzNmYiLCJpYXQiOjE2OTg3MTk1NDcsImV4cCI6MTcwMTMxMTU0N30.PQ_IAj3ZMozBEFj3Tzr2Qrj8zatLkiFlYmLYSntifJ7DY6Yc_QQPoMyc1n7XNGkgzLDF2WGJgfh5N_wWS2oy5g.lkrInIP8zLPWyyJ4gbHqg01UuMTZUex4MO3TLs%2FzzmU; " +
+                    "connect.sid=s%3ADxiz9kA3vFlWgvz0QROcu6qSlmNUhv4W.U2ywOdImY4w9bgdSSwHm3tGkmdP2VdsHII4F38vrFIA"
+        });
+        dbContext.SaveChanges();
+    }
+
+    var settingTeamId = dbContext.Settings.Where(it => it.Type == (int)EnumSetting.TeamId).FirstOrDefault();
+    if (settingTeamId == null)
+    {
+        dbContext.Settings.Add(new Setting()
+        {
+            Type = (int)EnumSetting.TeamId,
+            Value = "651bf055e17b027583a90fee"
+        });
+        dbContext.SaveChanges();
+    }
+
+    var settingNumTeam = dbContext.Settings.Where(it => it.Type == (int)EnumSetting.NumTeam).FirstOrDefault();
+    if (settingNumTeam == null)
+    {
+        dbContext.Settings.Add(new Setting()
+        {
+            Type = (int)EnumSetting.NumTeam,
+            Value = "2"
+        });
+        dbContext.SaveChanges();
+    }
+
+    #endregion
 
     var schedulerFactory = scope.ServiceProvider.GetRequiredService<ISchedulerFactory>();
-    var task = schedulerFactory.GetScheduler();
-    task.Wait();
-    var scheduler = task.Result;
+    var taskSchedulerFactory = schedulerFactory.GetScheduler();
+    taskSchedulerFactory.Wait();
+    var scheduler = taskSchedulerFactory.Result;
 
-    // define the job and tie it to our HelloJob class
-    var jobSyncActivites = JobBuilder.Create<JobSyncActivites>()
-        .WithIdentity(JobSyncActivites.jobKey)
+    var jobSyncData = JobBuilder.Create<JobSyncData>()
+        .WithIdentity(JobSyncData.jobKey)
         .Build();
 
     // Trigger the job to run now, and then every 40 seconds
-    var triggerJobSyncActivites = TriggerBuilder.Create()
+    var triggerJobSyncData = TriggerBuilder.Create()
         .WithIdentity("myTrigger", "groupOne")
         .StartNow()
-        //.WithSimpleSchedule(x => x.WithInterval(TimeSpan.FromSeconds(30)).RepeatForever())
+        //.WithSimpleSchedule(x => x.WithInterval(TimeSpan.FromMinutes(10)).RepeatForever())
         .WithSchedule(
             CronScheduleBuilder.CronSchedule("0 0 0 ? * * *")
             .InTimeZone(TimeZoneInfo.GetSystemTimeZones().Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
@@ -151,27 +112,8 @@ using (var scope = app.Services.CreateScope())
         )
         .Build();
 
-    var jobRefreshToken = JobBuilder.Create<JobRefreshToken>()
-        .WithIdentity(JobRefreshToken.jobKey)
-        .Build();
-
-    // Trigger the job to run now, and then every 40 seconds
-    var triggerJobRefreshToken = TriggerBuilder.Create()
-        .WithIdentity("triggerJobRefreshToken", "groupOne")
-        .StartNow()
-        //.WithSimpleSchedule(x => x.WithInterval(TimeSpan.FromSeconds(60)).RepeatForever())
-        .WithSchedule(
-            CronScheduleBuilder.CronSchedule("0 0,15,30,45 * ? * * *")
-            .InTimeZone(TimeZoneInfo.GetSystemTimeZones().Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
-            .First())
-        )
-        .Build();
-
-    var taskB = scheduler.ScheduleJob(jobSyncActivites, triggerJobSyncActivites);
-    taskB.Wait();
-
-    var taskC = scheduler.ScheduleJob(jobRefreshToken, triggerJobRefreshToken);
-    taskC.Wait();
+    var taskSchedulerJobSyncData = scheduler.ScheduleJob(jobSyncData, triggerJobSyncData);
+    taskSchedulerJobSyncData.Wait();
 
 }
 
@@ -188,8 +130,8 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-app.UseAuthentication();
-app.UseAuthorization();
+//app.UseAuthentication();
+//app.UseAuthorization();
 
 app.MapControllerRoute(
     name: "default",

@@ -21,76 +21,16 @@
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
-                        @if (!User.Identity!.IsAuthenticated)
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" href="@ViewData[ConstantDomains.UrlCallBackStrava]">Kết nối với Strava</a>
-                            </li>
-                        }
-                        else
-                        {
-                            var roles = User.Claims.Where(x => x.Type == ClaimTypes.Role).ToList();
-                            var isRoleAdmin = roles.Where(it => it.Value == "Administrator").FirstOrDefault() == null ? false : true;
-                            if (isRoleAdmin)
-                            {
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownOne" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Tools
-                                    </a>
-                                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownOne">
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Logs">Logs</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="JobParams">JobParams</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Tokens">Tokens</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Activities">Activities</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Athletes">Athletes</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="ClearLogs">ClearLogs</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="ClearJobParams">ClearJobParams</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="ClearTokens">ClearTokens</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="ClearActivities">ClearActivities</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="TriggerJobRefreshToken">TriggerJobRefreshToken</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="TriggerJobSyncActivities">TriggerJobSyncActivities</a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="DisableWeekTrainings">DisableWeekTrainings</a>
-                                        </li>
-                                    </ul>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownOne" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                Tools
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdownOne">
+                                <li class="nav-item">
+                                    <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Trigger">Sync Data</a>
                                 </li>
-                            }
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownTwo" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    Hi @User.Claims.FirstOrDefault(x => x.Type == "FullName")?.Value
-                                </a>
-                                <ul class="dropdown-menu" aria-labelledby="navbarDropdownTwo">
-                                    <li class="nav-item">
-                                        <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="SyncActivity">Xóa dữ liệu</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="LogOut">Đăng xuất</a>
-                                    </li>
-                                </ul>
-                            </li>
-                        }
+                            </ul>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -110,7 +50,6 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
