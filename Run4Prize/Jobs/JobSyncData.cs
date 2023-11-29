@@ -139,37 +139,17 @@ namespace Run4Prize.Jobs
                         activityDataResults.AddRange(item.data!);
                     }
 
-                    #region "Delete Data"
-                    using(var tran = dbContext.Database.BeginTransaction())
-                    {
-                        var tableTeam = await dbContext.Teams.ToListAsync();
-                        foreach (var team in tableTeam)
-                        {
-                            dbContext.Entry(team).State = EntityState.Deleted;
-                        }
-                        var tableMember = await dbContext.Members.ToListAsync();
-                        foreach (var member in tableMember)
-                        {
-                            dbContext.Entry(member).State = EntityState.Deleted;
-                        }
-                        var tableDistance = await dbContext.Distances.ToListAsync();
-                        foreach (var distance in tableDistance)
-                        {
-                            dbContext.Entry(distance).State = EntityState.Deleted;
-                        }
-                        await dbContext.SaveChangesAsync();
-                        await tran.CommitAsync();
-                    }
-                    
-                    #endregion
-
-                    var iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Teams', RESEED, 0);");
-                    var iB = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Members', RESEED, 0);");
-                    var iC = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Distances', RESEED, 0);");
-
                     #region "Insert Data"
                     using (var tran = dbContext.Database.BeginTransaction())
                     {
+
+                        var iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM 'Teams';");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM 'Members';");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM 'Distances';");
+
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Teams', RESEED, 0);");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Members', RESEED, 0);");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Distances', RESEED, 0);");
                         foreach (var team in teams)
                         {
                             var teamEntity = new Team()
@@ -259,3 +239,4 @@ namespace Run4Prize.Jobs
         }
     }
 }
+
