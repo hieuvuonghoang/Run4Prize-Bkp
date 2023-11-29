@@ -74,7 +74,7 @@
                                                     if (distances != null)
                                                     {
                                                         <td>
-                                                            <a href="javascript:void(0)" name="viewActivity" data-id="@member.Id" data-name="@member.Name" data-dats="@fromDateTmpTwo.ToString("yyyy-MM-dd")"> @distances.TotalDistance.ToString("N2")</a>
+                                                            <a href="javascript:void(0)" name="viewActivity" data-id="@member.Id" data-name="@member.Name" data-dats="@fromDateTmpTwo.ToString("yyyy-MM-dd")" data-dats-dis="@fromDateTmpTwo.ToString("dd/MM/yyyy")"> @distances.TotalDistance.ToString("N2")</a>
                                                         </td>
                                                     }
                                                     else
@@ -132,11 +132,6 @@
             </div>
             <div class="modal-body">
                 <ul id="exampleModalUl" class="list-group">
-                    <li class="list-group-item">An item</li>
-                    <li class="list-group-item">A second item</li>
-                    <li class="list-group-item">A third item</li>
-                    <li class="list-group-item">A fourth item</li>
-                    <li class="list-group-item">And a fifth one</li>
                 </ul>
             </div>
             <div class="modal-footer">
@@ -153,6 +148,7 @@
                 const memberName = $(this).attr('data-name');
                 const memberId = $(this).attr('data-id');
                 const dats = $(this).attr('data-dats');
+                const dat_display = $(this).attr('data-dats-dis');
                 const url = `/Home/GetActivities?memberId=${memberId}&dats=${dats}`;
                 $.ajax({
                     url: url,
@@ -162,9 +158,9 @@
                         const jData = JSON.parse(data);
                         $('#exampleModalUl').html('');
                         for(let i = 0; i < jData.length; i++) {
-                            $('#exampleModalUl').append(`<li class="list-group-item">${jData[i].Type} - ${jData[i].Distance}</li>`);
+                            $('#exampleModalUl').append(`<li class="list-group-item">${jData[i].CreateDate} - ${jData[i].Type} - ${jData[i].Distance}</li>`);
                         }
-                        $('#exampleModalLabel').text(`${memberName} (${dats})`)
+                        $('#exampleModalLabel').text(`${memberName} (${dat_display})`)
                         $('#exampleModal').modal('show');
                     },
                     error: function (error) {

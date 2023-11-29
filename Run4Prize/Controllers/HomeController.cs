@@ -143,7 +143,8 @@ namespace Run4Prize.Controllers
                     .Select(it => new
                     {
                         Type = it.Type,
-                        Distance = it.Distance.ToString("N2")
+                        Distance = it.Distance.ToString("N2"),
+                        CreateDate = it.CreateDate!.Value.ToString("HH:mm:ss")
                     })
                     .ToListAsync();
                 return Ok(JsonConvert.SerializeObject(activites));
