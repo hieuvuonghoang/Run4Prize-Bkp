@@ -61,8 +61,8 @@ using (var scope = app.Services.CreateScope())
         {
             Type = (int)EnumSetting.Cookie,
             Value = "locale=vi; " +
-                    "vr-auth_org=s%3AeyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NTFhODgwMzI2NTk2YTI5YjM4ZGEzNmYiLCJpYXQiOjE2OTg3MTk1NDcsImV4cCI6MTcwMTMxMTU0N30.PQ_IAj3ZMozBEFj3Tzr2Qrj8zatLkiFlYmLYSntifJ7DY6Yc_QQPoMyc1n7XNGkgzLDF2WGJgfh5N_wWS2oy5g.lkrInIP8zLPWyyJ4gbHqg01UuMTZUex4MO3TLs%2FzzmU; " +
-                    "connect.sid=s%3ADxiz9kA3vFlWgvz0QROcu6qSlmNUhv4W.U2ywOdImY4w9bgdSSwHm3tGkmdP2VdsHII4F38vrFIA"
+                    "vr-auth_org=s%3AeyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2NTFhODgwMzI2NTk2YTI5YjM4ZGEzNmYiLCJpYXQiOjE2OTk4NzE0NTcsImV4cCI6MTcwMjQ2MzQ1N30.htpPtxv3Clqm4JyN1C7GtoAL_aPP6GsTIvtyo3Cof1NEyFOQjwZVTgJJTzfngvcV-MslK4Opj8qKSpUbPY1iYA.il2Iji65l1GFlTFQqNPhCsDdE%2B2Z0XLpLvI3VkonXwg; " +
+                    "connect.sid=s%3ANa-IIDMEaDY2ATr8h1u6jPSIb72DcZ_I.ZlS6%2B72ianxk0XGNgG3IbaqfZtEuejSWZCJOYaJ0dro"
         });
         dbContext.SaveChanges();
     }
@@ -84,7 +84,7 @@ using (var scope = app.Services.CreateScope())
         dbContext.Settings.Add(new Setting()
         {
             Type = (int)EnumSetting.NumTeam,
-            Value = "2"
+            Value = "10"
         });
         dbContext.SaveChanges();
     }

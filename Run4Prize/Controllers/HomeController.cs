@@ -6,6 +6,7 @@ using Run4Prize.Enum;
 using Quartz;
 using Run4Prize.Jobs;
 using Newtonsoft.Json;
+using System;
 
 namespace Run4Prize.Controllers
 {
@@ -70,7 +71,7 @@ namespace Run4Prize.Controllers
                .GetSystemTimeZones()
                .Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
                .First();
-            var nowVN = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneVN);
+            var nowVN = TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneInfo.Local, timeZoneVN);
             nowVN = new DateTime(nowVN.Year, nowVN.Month, nowVN.Day, 0, 0, 0);
             DateTime toDate = nowVN.AddSeconds(0);
             if (nowVN.DayOfWeek != DayOfWeek.Monday)
@@ -125,6 +126,31 @@ namespace Run4Prize.Controllers
             ViewData["toDate"] = toDate;
             ViewData["fromDate"] = nowVN;
             return View();
+        }
+
+        public async Task<IActionResult> GetActivities(long memberId, string dats)
+        {
+            if (!string.IsNullOrEmpty(dats))
+            {
+                var createDate = DateTime.Now;
+                DateTime.TryParse(dats, out createDate);
+                var fromDate = new DateTime(createDate.Year, createDate.Month, createDate.Day, 0, 0, 0);
+                var toDate = new DateTime(createDate.Year, createDate.Month, createDate.Day, 23, 59, 59);
+                var activites = await _dbContext
+                    .Activities
+                    .Where(it => it.MemberId == memberId && it.CreateDate >= fromDate && it.CreateDate <= toDate)
+                    .AsNoTracking()
+                    .Select(it => new
+                    {
+                        Type = it.Type,
+                        Distance = it.Distance.ToString("N2")
+                    })
+                    .ToListAsync();
+                return Ok(JsonConvert.SerializeObject(activites));
+            } else
+            {
+                return NotFound();
+            }
         }
     }
 }

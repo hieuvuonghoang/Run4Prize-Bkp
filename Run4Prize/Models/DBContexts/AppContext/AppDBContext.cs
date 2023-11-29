@@ -13,9 +13,25 @@ namespace Run4Prize.Models.DBContexts.AppContext
         public DbSet<Member> Members { get; set; }
         public DbSet<Distance> Distances { get; set; }
         public DbSet<Log> Logs { get; set; }
+        public DbSet<Activity> Activities { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            modelBuilder.Entity<Activity>()
+                .ToTable("Activities");
+            modelBuilder.Entity<Activity>()
+                .HasKey(it => it.Id);
+            modelBuilder.Entity<Activity>()
+                .Property(it => it.Id)
+                .ValueGeneratedOnAdd();
+            modelBuilder.Entity<Activity>()
+                .Property(it => it.Type)
+                .HasMaxLength(10);
+            modelBuilder.Entity<Activity>()
+                .HasIndex(it => it.MemberId);
+            modelBuilder.Entity<Activity>()
+                .HasIndex(it => it.CreateDate);
+
             modelBuilder.Entity<Team>()
                 .ToTable("Teams");
             modelBuilder.Entity<Team>()

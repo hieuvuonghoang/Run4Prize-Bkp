@@ -1,8 +1,5 @@
 ﻿@using Run4Prize.Constants;
 @using System.Security.Claims;
-@{
-    var lastUpdate = (string?)ViewData["lastUpdate"];
-}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,17 +19,6 @@
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="dropdown-item" asp-area="" asp-controller="Home" asp-action="Trigger">@Html.Raw(string.IsNullOrEmpty(lastUpdate) ? "SyncData" : "Sync Data (Last Update: " + lastUpdate + ")")</a>
-                        </li>
-                    </ul>
-                    <form method="get" asp-controller="Home" asp-action="Index" class="d-flex">
-                        <input name="dats" class="form-control me-2" type="date" aria-label="" value="@ViewData["dats"]">
-                        <button class="btn btn-outline-success" type="submit">Submit</button>
-                    </form>
-                </div>
             </div>
         </nav>
     </header>

@@ -4,8 +4,16 @@
     var toDate = (DateTime)ViewData["toDate"]!;
     var fromDate = (DateTime)ViewData["fromDate"]!;
     var teams = (List<Run4Prize.Models.DBContexts.AppContext.Team>)ViewData["data"]!;
-    ViewData["dats"] = toDate.ToString("yyyy-MM-dd");
+    var lastUpdate = (string?)ViewData["lastUpdate"];
 }
+
+<div class="d-grid gap-2 mb-2">
+    <a class="btn btn-primary" type="button" asp-area="" asp-controller="Home" asp-action="Trigger">@Html.Raw(string.IsNullOrEmpty(lastUpdate) ? "SyncData" : "Sync Data (Last Update: " + lastUpdate + ")")</a>
+    <form method="get" asp-controller="Home" asp-action="Index" class="d-flex">
+        <input name="dats" class="form-control me-2" type="date" aria-label="" value="@toDate.ToString("yyyy-MM-dd")">
+        <button class="btn btn-outline-success" type="submit">Submit</button>
+    </form>
+</div>
 
 <div class="accordion" id="accordionPanelsStayOpenExample">
     @foreach (var team in teams)
@@ -66,7 +74,7 @@
                                                     if (distances != null)
                                                     {
                                                         <td>
-                                                            @distances.TotalDistance.ToString("N2")
+                                                            <a href="javascript:void(0)" name="viewActivity" data-id="@member.Id" data-name="@member.Name" data-dats="@fromDateTmpTwo.ToString("yyyy-MM-dd")"> @distances.TotalDistance.ToString("N2")</a>
                                                         </td>
                                                     }
                                                     else
@@ -114,10 +122,56 @@
     }
 </div>
 
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul id="exampleModalUl" class="list-group">
+                    <li class="list-group-item">An item</li>
+                    <li class="list-group-item">A second item</li>
+                    <li class="list-group-item">A third item</li>
+                    <li class="list-group-item">A fourth item</li>
+                    <li class="list-group-item">And a fifth one</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts{
     <script>
         $(document).ready(function () {
-
+            $('a[name="viewActivity"]').on("click", function() {
+                const memberName = $(this).attr('data-name');
+                const memberId = $(this).attr('data-id');
+                const dats = $(this).attr('data-dats');
+                const url = `/Home/GetActivities?memberId=${memberId}&dats=${dats}`;
+                $.ajax({
+                    url: url,
+                    type: 'GET',
+                    success: function (data) {
+                        console.log(data);
+                        const jData = JSON.parse(data);
+                        $('#exampleModalUl').html('');
+                        for(let i = 0; i < jData.length; i++) {
+                            $('#exampleModalUl').append(`<li class="list-group-item">${jData[i].Type} - ${jData[i].Distance}</li>`);
+                        }
+                        $('#exampleModalLabel').text(`${memberName} (${dats})`)
+                        $('#exampleModal').modal('show');
+                    },
+                    error: function (error) {
+                        alert(error.statusText);
+                    }
+                });
+            });
         });
     </script>
 }

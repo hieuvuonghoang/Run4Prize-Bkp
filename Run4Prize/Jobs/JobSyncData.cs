@@ -7,6 +7,7 @@ using Run4Prize.Models.DBContexts.AppContext;
 using Run4Prize.Models.Domains.Actitvity;
 using Run4Prize.Models.Domains.ScoreBoard;
 using Run4Prize.Services;
+using System;
 
 namespace Run4Prize.Jobs
 {
@@ -27,6 +28,10 @@ namespace Run4Prize.Jobs
             using (var scope = _serviceProvider.CreateScope())
             {
                 var dbContext = scope.ServiceProvider.GetRequiredService<AppDBContext>();
+                var timeZoneVN = TimeZoneInfo
+                       .GetSystemTimeZones()
+                       .Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
+                       .First();
                 try
                 {
                     var topTeamService = scope.ServiceProvider.GetRequiredService<ITopTeamServices>();
@@ -50,13 +55,13 @@ namespace Run4Prize.Jobs
                     }
 
                     var numTeam = await dbContext.Settings.Where(it => it.Type == (int)EnumSetting.NumTeam).FirstOrDefaultAsync();
-                    var numTeamValue = 2;
+                    var numTeamValue = 10;
                     if (numTeam != null && !string.IsNullOrEmpty(numTeam.Value))
                     {
                         if (!int.TryParse(numTeam.Value, out numTeamValue))
                         {
                             // default
-                            numTeamValue = 2;
+                            numTeamValue = 10;
                         }
                     }
                     topTeamData.data!.result = topTeamData.data!.result!.OrderBy(it => it.rank).ToList();
@@ -143,13 +148,15 @@ namespace Run4Prize.Jobs
                     using (var tran = dbContext.Database.BeginTransaction())
                     {
 
-                        var iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM 'Teams';");
-                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM 'Members';");
-                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM 'Distances';");
+                        var iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM Teams;");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM Members;");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM Distances;");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM Activities;");
 
                         iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Teams', RESEED, 0);");
                         iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Members', RESEED, 0);");
                         iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Distances', RESEED, 0);");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Activities', RESEED, 0);");
                         foreach (var team in teams)
                         {
                             var teamEntity = new Team()
@@ -174,9 +181,19 @@ namespace Run4Prize.Jobs
                                 dbContext.SaveChanges();
                                 var activities = activityDataResults.Where(it => it.user == scoreBoard.uId).ToList();
                                 var distances = new List<Models.DBContexts.AppContext.Distance>();
+                                var acts = new List<Activity>();
                                 foreach(var activity in activities)
                                 {
-                                    activity.createdDate = activity.createdDate.AddHours(7);
+                                    var createdDateVN = TimeZoneInfo.ConvertTime(activity.createdDate, timeZoneVN);
+                                    activity.createdDate = createdDateVN;
+                                    var act = new Activity()
+                                    {
+                                        CreateDate = activity.createdDate,
+                                        MemberId = memberEntity.Id,
+                                        Distance = activity.distance / 1000,
+                                        Type = activity.type
+                                    };
+                                    acts.Add(act);
                                     double distance = 0;
                                     if(activity.type == "Run" || activity.type == "Walk")
                                     {
@@ -188,7 +205,8 @@ namespace Run4Prize.Jobs
                                     }
                                     var findByDate = distances.Where(it => it.CreateDate.Year == activity.createdDate.Year &&
                                         it.CreateDate.Month == activity.createdDate.Month &&
-                                        it.CreateDate.Day == activity.createdDate.Day).FirstOrDefault();
+                                        it.CreateDate.Day == activity.createdDate.Day)
+                                        .FirstOrDefault();
                                     if (findByDate != null)
                                     {
                                         findByDate.TotalDistance += distance;
@@ -204,19 +222,16 @@ namespace Run4Prize.Jobs
                                     }
                                 }
                                 dbContext.Distances.AddRange(distances);
-                                dbContext.SaveChanges();
+                                dbContext.Activities.AddRange(acts);
                             }
                         }
+                        dbContext.SaveChanges();
                         await tran.CommitAsync();
                     }
 
                     #endregion
 
-                    var timeZoneVN = TimeZoneInfo
-                       .GetSystemTimeZones()
-                       .Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
-                       .First();
-                    var nowVN = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneVN);
+                    var nowVN = TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneInfo.Local, timeZoneVN);
                     dbContext.Logs.Add(new Log()
                     {
                         Mess = "JobSyncData Done!",
@@ -227,10 +242,12 @@ namespace Run4Prize.Jobs
                 }
                 catch (Exception ex)
                 {
+                    var nowVN = TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneInfo.Local, timeZoneVN);
                     dbContext.Logs.Add(new Log()
                     {
                         Mess = ex.Message,
-                        Type = "ERR"
+                        Type = "ERR",
+                        EndDate = nowVN
                     });
                     await dbContext.SaveChangesAsync();
                 }
