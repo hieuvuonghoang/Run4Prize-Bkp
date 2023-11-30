@@ -2,7 +2,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Run4Prize.Models.DBContexts.AppContext;
@@ -12,8 +11,8 @@ using Run4Prize.Models.DBContexts.AppContext;
 namespace Run4Prize.Migrations
 {
     [DbContext(typeof(AppDBContext))]
-    [Migration("20231103070932_Update03")]
-    partial class Update03
+    [Migration("20231130094918_InitDB")]
+    partial class InitDB
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -21,9 +20,42 @@ namespace Run4Prize.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "7.0.12")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            modelBuilder.Entity("Run4Prize.Models.DBContexts.AppContext.Activity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("CreateDate")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<double>("Distance")
+                        .HasColumnType("double");
+
+                    b.Property<string>("MapUrl")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<long>("MemberId")
+                        .HasColumnType("bigint");
+
+                    b.Property<double>("MovingTime")
+                        .HasColumnType("double");
+
+                    b.Property<string>("Type")
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreateDate");
+
+                    b.HasIndex("MemberId");
+
+                    b.ToTable("Activities", (string)null);
+                });
 
             modelBuilder.Entity("Run4Prize.Models.DBContexts.AppContext.Distance", b =>
                 {
@@ -31,16 +63,14 @@ namespace Run4Prize.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
                     b.Property<DateTime>("CreateDate")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<long>("MemberId")
                         .HasColumnType("bigint");
 
                     b.Property<double>("TotalDistance")
-                        .HasColumnType("float");
+                        .HasColumnType("double");
 
                     b.HasKey("Id");
 
@@ -55,17 +85,18 @@ namespace Run4Prize.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Mess")
                         .IsRequired()
                         .IsUnicode(true)
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                        .HasColumnType("varchar(10)");
 
                     b.HasKey("Id");
 
@@ -78,12 +109,10 @@ namespace Run4Prize.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50)");
 
                     b.Property<long>("TeamId")
                         .HasColumnType("bigint");
@@ -101,15 +130,13 @@ namespace Run4Prize.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
                     b.Property<string>("Value")
                         .HasMaxLength(500)
                         .IsUnicode(true)
-                        .HasColumnType("nvarchar(500)");
+                        .HasColumnType("varchar(500)");
 
                     b.HasKey("Id");
 
@@ -122,12 +149,19 @@ namespace Run4Prize.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<double>("Rank")
+                        .HasColumnType("double");
+
+                    b.Property<double>("TotalDistance")
+                        .HasColumnType("double");
+
+                    b.Property<string>("Uid")
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 

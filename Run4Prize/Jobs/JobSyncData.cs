@@ -139,24 +139,24 @@ namespace Run4Prize.Jobs
                     }
 
                     var activityDataResults = new List<Datum>();
-                    foreach(var item in taskGetActivityDataResult)
+                    foreach (var item in taskGetActivityDataResult)
                     {
                         activityDataResults.AddRange(item.data!);
                     }
 
-                    #region "Insert Data"
+                    #region "Delete and Insert Data"
                     using (var tran = dbContext.Database.BeginTransaction())
                     {
+                        var iA = await dbContext.Database.ExecuteSqlRawAsync($"delete from Teams;");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"delete from Members;");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"delete from Distances;");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"delete from Activities;");
 
-                        var iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM Teams;");
-                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM Members;");
-                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM Distances;");
-                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DELETE FROM Activities;");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"alter table Teams auto_increment = 1;");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"alter table Members auto_increment = 1;");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"alter table Distances auto_increment = 1;");
+                        iA = await dbContext.Database.ExecuteSqlRawAsync($"alter table Activities auto_increment = 1;");
 
-                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Teams', RESEED, 0);");
-                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Members', RESEED, 0);");
-                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Distances', RESEED, 0);");
-                        iA = await dbContext.Database.ExecuteSqlRawAsync($"DBCC CHECKIDENT('Activities', RESEED, 0);");
                         foreach (var team in teams)
                         {
                             var teamEntity = new Team()
@@ -170,7 +170,7 @@ namespace Run4Prize.Jobs
                             dbContext.SaveChanges();
                             var scoreBoards = scoreBoardResults.Where(it => it.teamId == team.teamId).ToList();
                             var memberEntitys = new List<Models.DBContexts.AppContext.Member>();
-                            foreach(var scoreBoard in scoreBoards)
+                            foreach (var scoreBoard in scoreBoards)
                             {
                                 var memberEntity = new Models.DBContexts.AppContext.Member()
                                 {
@@ -180,9 +180,9 @@ namespace Run4Prize.Jobs
                                 dbContext.Members.Add(memberEntity);
                                 dbContext.SaveChanges();
                                 var activities = activityDataResults.Where(it => it.user == scoreBoard.uId).ToList();
-                                var distances = new List<Models.DBContexts.AppContext.Distance>();
+                                var distances = new List<Distance>();
                                 var acts = new List<Activity>();
-                                foreach(var activity in activities)
+                                foreach (var activity in activities)
                                 {
                                     var createdDateVN = TimeZoneInfo.ConvertTime(activity.createdDate, timeZoneVN);
                                     activity.createdDate = createdDateVN;
@@ -197,11 +197,11 @@ namespace Run4Prize.Jobs
                                     };
                                     acts.Add(act);
                                     double distance = 0;
-                                    if(activity.type == "Run" || activity.type == "Walk")
+                                    if (activity.type == "Run" || activity.type == "Walk")
                                     {
                                         distance = activity.distance / 1000;
                                     }
-                                    else if(activity.type == "Bike")
+                                    else if (activity.type == "Bike")
                                     {
                                         distance = activity.distance / 3000;
                                     }
@@ -212,9 +212,10 @@ namespace Run4Prize.Jobs
                                     if (findByDate != null)
                                     {
                                         findByDate.TotalDistance += distance;
-                                    } else
+                                    }
+                                    else
                                     {
-                                        findByDate = new Models.DBContexts.AppContext.Distance()
+                                        findByDate = new Distance()
                                         {
                                             CreateDate = new DateTime(activity.createdDate.Year, activity.createdDate.Month, activity.createdDate.Day),
                                             MemberId = memberEntity.Id,
@@ -230,7 +231,6 @@ namespace Run4Prize.Jobs
                         dbContext.SaveChanges();
                         await tran.CommitAsync();
                     }
-
                     #endregion
 
                     var nowVN = TimeZoneInfo.ConvertTime(DateTime.Now, TimeZoneInfo.Local, timeZoneVN);

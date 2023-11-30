@@ -3,7 +3,6 @@ using Run4Prize.Enum;
 using Run4Prize.Models.DBContexts.AppContext;
 using Run4Prize.Models.Domains.Configs;
 using Run4Prize.Models.Domains.ScoreBoard;
-using Run4Prize.Models.Domains.TopTeam;
 
 namespace Run4Prize.Services
 {

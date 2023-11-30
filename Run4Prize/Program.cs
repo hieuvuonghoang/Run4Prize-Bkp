@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Quartz;
 using Quartz.AspNetCore;
 using Run4Prize.AutoMapper;
@@ -16,7 +15,7 @@ builder.Services.AddControllersWithViews();
 
 builder.Services.Configure<APIConfig>(builder.Configuration.GetSection(nameof(APIConfig)));
 
-builder.Services.AddDbContext<AppDBContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<AppDBContext>(options => options.UseMySQL(builder.Configuration.GetConnectionString("DefaultConnection")!));
 
 builder.Services.AddAutoMapper(typeof(AutoMapperProfile));
 
@@ -84,7 +83,7 @@ using (var scope = app.Services.CreateScope())
         dbContext.Settings.Add(new Setting()
         {
             Type = (int)EnumSetting.NumTeam,
-            Value = "3"
+            Value = "2"
         });
         dbContext.SaveChanges();
     }
@@ -106,7 +105,7 @@ using (var scope = app.Services.CreateScope())
         .StartNow()
         //.WithSimpleSchedule(x => x.WithInterval(TimeSpan.FromMinutes(10)).RepeatForever())
         .WithSchedule(
-            CronScheduleBuilder.CronSchedule("0 0,10,20,30,40,50 5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23 ? * * *")
+            CronScheduleBuilder.CronSchedule("0 0,30 5,6,7,8,13,18,19,20,21,22,23 ? * * *")
             .InTimeZone(TimeZoneInfo.GetSystemTimeZones().Where(it => it.BaseUtcOffset == TimeSpan.FromHours(7))
             .First())
         )
