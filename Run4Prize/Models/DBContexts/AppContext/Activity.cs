@@ -7,5 +7,7 @@
         public string? Type { get; set; }
         public DateTime? CreateDate { get; set; }
         public double Distance { get; set; }
+        public double MovingTime { get; set; }
+        public string? MapUrl { get; set; }
     }
 }

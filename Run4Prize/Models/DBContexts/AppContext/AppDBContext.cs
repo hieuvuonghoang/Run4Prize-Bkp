@@ -28,6 +28,9 @@ namespace Run4Prize.Models.DBContexts.AppContext
                 .Property(it => it.Type)
                 .HasMaxLength(10);
             modelBuilder.Entity<Activity>()
+                .Property(it => it.MapUrl)
+                .HasMaxLength(100);
+            modelBuilder.Entity<Activity>()
                 .HasIndex(it => it.MemberId);
             modelBuilder.Entity<Activity>()
                 .HasIndex(it => it.CreateDate);

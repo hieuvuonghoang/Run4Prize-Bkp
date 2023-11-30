@@ -84,7 +84,7 @@ using (var scope = app.Services.CreateScope())
         dbContext.Settings.Add(new Setting()
         {
             Type = (int)EnumSetting.NumTeam,
-            Value = "10"
+            Value = "3"
         });
         dbContext.SaveChanges();
     }

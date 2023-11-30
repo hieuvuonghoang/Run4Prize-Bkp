@@ -144,7 +144,9 @@ namespace Run4Prize.Controllers
                     {
                         Type = it.Type,
                         Distance = it.Distance.ToString("N2"),
-                        CreateDate = it.CreateDate!.Value.ToString("HH:mm:ss")
+                        CreateDate = it.CreateDate!.Value.ToString("HH:mm:ss"),
+                        MovingTime = it.MovingTime.ToString("N2"),
+                        MapUrl = it.MapUrl,
                     })
                     .ToListAsync();
                 return Ok(JsonConvert.SerializeObject(activites));

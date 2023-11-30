@@ -191,7 +191,9 @@ namespace Run4Prize.Jobs
                                         CreateDate = activity.createdDate,
                                         MemberId = memberEntity.Id,
                                         Distance = activity.distance / 1000,
-                                        Type = activity.type
+                                        Type = activity.type,
+                                        MovingTime = activity.movingTime / 60,
+                                        MapUrl = activity.mapUrl,
                                     };
                                     acts.Add(act);
                                     double distance = 0;
